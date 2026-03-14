@@ -6,9 +6,9 @@ import { POLICY_PRESETS, TOOL_PACKS } from '../lib/constants'
 import type { PolicyPreset } from '../types/agent'
 
 const DOMAIN_STYLE: Record<string, string> = {
-  health:    'text-blue-400',
-  gov:       'text-purple-400',
-  marketing: 'text-amber-400',
+  healthtech: 'text-blue-400',
+  agrotech:   'text-green-400',
+  fintech:    'text-amber-400',
 }
 
 const SENS_STYLE: Record<string, string> = {

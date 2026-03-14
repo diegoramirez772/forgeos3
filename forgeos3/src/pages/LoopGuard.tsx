@@ -16,9 +16,9 @@ function getRiskLevel(score: number): { label: string; color: string; text: stri
 }
 
 const DOMAIN_COLOR: Record<string, string> = {
-  health:    'text-blue-400',
-  gov:       'text-purple-400',
-  marketing: 'text-amber-500',
+  healthtech: 'text-blue-400',
+  agrotech:   'text-green-400',
+  fintech:    'text-amber-500',
 }
 
 // Generate fake loop score history for visual interest

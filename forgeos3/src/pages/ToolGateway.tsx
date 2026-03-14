@@ -23,9 +23,9 @@ const DECISION_STYLES: Record<string, { icon: typeof CheckCircle; cls: string; b
 }
 
 const DOMAIN_COLOR: Record<string, string> = {
-  health:    'bg-blue-500/10 border-blue-500/20 text-blue-400',
-  gov:       'bg-purple-500/10 border-purple-500/20 text-purple-400',
-  marketing: 'bg-amber-400/10 border-amber-400/20 text-amber-500',
+  healthtech: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+  agrotech:   'bg-green-500/10 border-green-500/20 text-green-400',
+  fintech:    'bg-amber-400/10 border-amber-400/20 text-amber-500',
 }
 
 const SENS_DOT: Record<string, string> = {

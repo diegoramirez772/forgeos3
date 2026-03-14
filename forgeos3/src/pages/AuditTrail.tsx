@@ -15,7 +15,7 @@ type AuditEntry =
   | { kind: 'approval'; approval: ApprovalRequest; ts: number }
   | { kind: 'run';      run: Run; ts: number; subtype: 'started' | 'finished' | 'blocked' | 'safe_mode' }
 
-type DomainFilter    = 'all' | 'health' | 'gov' | 'marketing'
+type DomainFilter    = 'all' | 'healthtech' | 'agrotech' | 'fintech'
 type DecisionFilter  = 'all' | 'allowed' | 'blocked' | 'approval_required'
 type EntryKindFilter = 'all' | 'tool' | 'approval' | 'run'
 
@@ -34,9 +34,9 @@ function timeAgo(ts: number) {
 }
 
 const DOMAIN_PILL: Record<string, string> = {
-  health:    'bg-blue-500/10 border-blue-500/20 text-blue-400',
-  gov:       'bg-purple-500/10 border-purple-500/20 text-purple-400',
-  marketing: 'bg-amber-400/10 border-amber-400/20 text-amber-500',
+  healthtech: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+  agrotech:   'bg-green-500/10 border-green-500/20 text-green-400',
+  fintech:    'bg-amber-400/10 border-amber-400/20 text-amber-500',
 }
 
 export function AuditTrail() {
@@ -150,13 +150,13 @@ export function AuditTrail() {
           {/* Domain */}
           <div className="flex items-center gap-1.5">
             <span className="text-[9px] text-forge-subtle uppercase tracking-widest mr-1">Domain</span>
-            {(['all', 'health', 'gov', 'marketing'] as DomainFilter[]).map(d => (
+            {(['all', 'healthtech', 'agrotech', 'fintech'] as DomainFilter[]).map(d => (
               <button key={d} onClick={() => setDomainFilter(d)}
                 className={`text-[10px] px-2.5 py-1 rounded-lg border font-semibold capitalize transition-all ${
                   domainFilter === d
-                    ? d === 'all'       ? 'bg-forge-amber text-black border-forge-amber'
-                    : d === 'health'    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                    : d === 'gov'       ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                    ? d === 'all'        ? 'bg-forge-amber text-black border-forge-amber'
+                    : d === 'healthtech' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                    : d === 'agrotech'   ? 'bg-green-500/20 text-green-400 border-green-500/30'
                     : 'bg-amber-400/20 text-amber-500 border-amber-400/30'
                     : 'bg-forge-elevated border-forge-border text-forge-subtle hover:border-forge-line'
                 }`}>

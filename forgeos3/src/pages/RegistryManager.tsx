@@ -10,9 +10,9 @@ const TABS = [
 ]
 
 const DOMAIN_STYLE: Record<string, { pill: string; icon: string }> = {
-  health:    { pill: 'bg-blue-500/10 border-blue-500/20 text-blue-500',     icon: 'text-blue-400'     },
-  gov:       { pill: 'bg-purple-500/10 border-purple-500/20 text-purple-500', icon: 'text-purple-400' },
-  marketing: { pill: 'bg-amber-400/10 border-amber-400/20 text-amber-500',  icon: 'text-amber-400'    },
+  healthtech: { pill: 'bg-blue-500/10 border-blue-500/20 text-blue-500',     icon: 'text-blue-400'    },
+  agrotech:   { pill: 'bg-green-500/10 border-green-500/20 text-green-500', icon: 'text-green-400'  },
+  fintech:    { pill: 'bg-amber-400/10 border-amber-400/20 text-amber-500',  icon: 'text-amber-400'    },
   custom:    { pill: 'bg-forge-elevated border-forge-border text-forge-subtle', icon: 'text-forge-subtle' },
 }
 

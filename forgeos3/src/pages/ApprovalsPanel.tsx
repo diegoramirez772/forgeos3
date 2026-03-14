@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckSquare, Clock, Check, X, AlertTriangle } from 'lucide-react'
+import { Clock, Check, X, AlertTriangle } from 'lucide-react'
 import { TopBar } from '../components/layout/TopBar'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -16,9 +16,9 @@ function timeAgo(ts: string) {
 }
 
 const domainColors: Record<string, string> = {
-  health: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  gov: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  marketing: 'bg-forge-amber/10 text-forge-amber border-forge-amber/20',
+  healthtech: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  agrotech: 'bg-green-500/10 text-green-400 border-green-500/20',
+  fintech: 'bg-amber-400/10 text-amber-500 border-amber-400/20',
 }
 
 export function ApprovalsPanel() {
@@ -81,7 +81,7 @@ export function ApprovalsPanel() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 shrink-0">
                       <Button variant="danger" size="sm" onClick={() => setModal({ approval: a, action: 'rejected' })}>
                         <X size={12} /> Reject
                       </Button>
@@ -112,7 +112,7 @@ export function ApprovalsPanel() {
           <Card className="divide-y divide-forge-border overflow-hidden">
             {resolved.map(a => (
               <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-forge-elevated/50 transition-colors">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${a.status === 'approved' ? 'bg-forge-green/10' : 'bg-forge-red/10'}`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${a.status === 'approved' ? 'bg-forge-green/10' : 'bg-forge-red/10'}`}>
                   {a.status === 'approved' ? <Check size={11} className="text-forge-green" /> : <X size={11} className="text-forge-red" />}
                 </div>
                 <div className="flex-1 min-w-0">

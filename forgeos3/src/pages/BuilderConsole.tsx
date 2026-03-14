@@ -38,8 +38,8 @@ export function BuilderConsole() {
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [domain, setDomain] = useState<DomainProfile>('health')
-  const [toolPackId, setToolPackId] = useState('tp-health')
+  const [domain, setDomain] = useState<DomainProfile>('healthtech')
+  const [toolPackId, setToolPackId] = useState('tp-healthtech')
   const [policyId, setPolicyId] = useState('pp-medium')
   const [riskMode, setRiskMode] = useState<RiskMode>('safe')
   const [approvals, setApprovals] = useState<string[]>([])
@@ -207,7 +207,7 @@ export function BuilderConsole() {
                     const s = DOMAIN_STYLE[d.key]
                     const active = domain === d.key
                     return (
-                      <button key={d.key} onClick={() => { setDomain(d.key); setToolPackId(`tp-${d.key === 'custom' ? 'health' : d.key}`) }}
+                      <button key={d.key} onClick={() => { setDomain(d.key); setToolPackId(`tp-${d.key === 'custom' ? 'healthtech' : d.key}`) }}
                         className={`p-4 rounded-2xl border text-left transition-all duration-200 ${active ? `${s.border} ${s.bg} ring-1 ${s.ring}` : 'border-forge-border bg-forge-surface hover:border-forge-line'}`}>
                         <div className="flex items-center justify-between mb-3">
                           <span className={`text-2xl ${s.icon}`}>{d.icon}</span>

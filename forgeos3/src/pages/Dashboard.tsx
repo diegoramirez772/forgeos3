@@ -32,9 +32,9 @@ const DECISION_COLOR: Record<string, string> = {
 }
 
 const DOMAIN_COLOR: Record<string, string> = {
-  health:    'text-blue-500',
-  gov:       'text-purple-500',
-  marketing: 'text-amber-500',
+  healthtech: 'text-blue-500',
+  agrotech:   'text-green-500',
+  fintech:    'text-amber-500',
 }
 
 const MINI_CHART = [
@@ -297,8 +297,8 @@ export function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {agents.map(agent => {
               const run = runs.find(r => r.agentId === agent.id)
-              const domainIcon: Record<string, string> = { health: '♥', gov: '⬡', marketing: '◈', custom: '◎' }
-              const domainCol = { health: 'text-blue-500', gov: 'text-purple-500', marketing: 'text-amber-500', custom: 'text-forge-subtle' }
+              const domainIcon: Record<string, string> = { healthtech: '♥', agrotech: '⬡', fintech: '◈', custom: '◎' }
+              const domainCol: Record<string, string> = { healthtech: 'text-blue-500', agrotech: 'text-green-500', fintech: 'text-amber-500', custom: 'text-forge-subtle' }
               return (
                 <div key={agent.id}
                   className="p-4 bg-forge-surface border border-forge-border rounded-2xl hover:border-forge-line transition-colors cursor-pointer group"
