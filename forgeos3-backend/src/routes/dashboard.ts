@@ -92,3 +92,82 @@ dashboardRouter.get('/stats', async (_req, res) => {
     res.status(500).json({ error: 'Failed to fetch dashboard stats' })
   }
 })
+
+
+// GET /api/dashboard/tokens — token efficiency metrics
+dashboardRouter.get('/tokens', async (_req, res) => {
+  try {
+    const [runsResult, eventsResult] = await Promise.all([
+      supabase
+        .from('agent_runs')
+        .select('id, agent_name, domain, total_tokens, status'),
+      supabase
+        .from('tool_events')
+        .select('decision, token_usage, tool_name, run_id'),
+    ])
+
+    const runs   = runsResult.data  ?? []
+    const events = eventsResult.data ?? []
+
+    // Total tokens used across all runs
+    const totalTokensUsed = runs.reduce((s, r) => s + (r.total_tokens ?? 0), 0)
+
+    // Tokens saved by policy blocking tools
+    const tokensSavedByPolicy = events
+      .filter(e => e.decision === 'blocked')
+      .reduce((s, e) => s + ((e.token_usage as Record<string,number>)?.saved ?? 500), 0)
+
+    // Avg tokens per run
+    const runsWithTokens = runs.filter(r => (r.total_tokens ?? 0) > 0)
+    const avgTokensPerRun = runsWithTokens.length
+      ? Math.round(totalTokensUsed / runsWithTokens.length)
+      : 0
+
+    // Tokens by domain
+    const tokensByDomain: Record<string, number> = {}
+    for (const run of runs) {
+      if (run.domain && run.total_tokens) {
+        tokensByDomain[run.domain] = (tokensByDomain[run.domain] || 0) + run.total_tokens
+      }
+    }
+
+    // Most expensive tools
+    const toolCosts: Record<string, { total: number; count: number }> = {}
+    for (const e of events) {
+      if (e.decision !== 'blocked') {
+        const cost = (e.token_usage as Record<string,number>)?.total ?? 0
+        if (!toolCosts[e.tool_name]) toolCosts[e.tool_name] = { total: 0, count: 0 }
+        toolCosts[e.tool_name].total += cost
+        toolCosts[e.tool_name].count += 1
+      }
+    }
+
+    const topTools = Object.entries(toolCosts)
+      .map(([name, { total, count }]) => ({
+        toolName: name,
+        totalTokens: total,
+        avgTokens: Math.round(total / count),
+        calls: count,
+      }))
+      .sort((a, b) => b.totalTokens - a.totalTokens)
+      .slice(0, 5)
+
+    // Efficiency ratio — tokens saved / total potential
+    const totalPotential = totalTokensUsed + tokensSavedByPolicy
+    const efficiencyPct  = totalPotential > 0
+      ? Math.round((tokensSavedByPolicy / totalPotential) * 100)
+      : 0
+
+    res.json({
+      totalTokensUsed,
+      tokensSavedByPolicy,
+      avgTokensPerRun,
+      efficiencyPct,
+      tokensByDomain,
+      topTools,
+      message: `Policy Engine saved ${tokensSavedByPolicy} tokens by blocking ${events.filter(e => e.decision === 'blocked').length} tool calls`,
+    })
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch token metrics' })
+  }
+})
