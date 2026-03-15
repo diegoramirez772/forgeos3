@@ -10,6 +10,7 @@ import { toolsRouter     } from './routes/tools'
 import { approvalsRouter } from './routes/approvals'
 import { authRouter      } from './routes/auth'
 import { sandboxRouter   } from './routes/sandbox'
+import { dashboardRouter } from './routes/dashboard'
 import { errorHandler    } from './middleware/errorHandler'
 import { authMiddleware  } from './middleware/auth'
 
@@ -30,11 +31,12 @@ app.use('/api/auth', authRouter)
 app.use('/api',      registryRouter)
 
 // Protected — require valid JWT
-app.use('/api/agents',    authMiddleware, agentsRouter)
-app.use('/api/runs',      authMiddleware, runsRouter)
-app.use('/api/tools',     authMiddleware, toolsRouter)
-app.use('/api/approvals', authMiddleware, approvalsRouter)
-app.use('/api/sandbox',   authMiddleware, sandboxRouter)
+app.use('/api/agents',     authMiddleware, agentsRouter)
+app.use('/api/runs',       authMiddleware, runsRouter)
+app.use('/api/tools',      authMiddleware, toolsRouter)
+app.use('/api/approvals',  authMiddleware, approvalsRouter)
+app.use('/api/sandbox',    authMiddleware, sandboxRouter)
+app.use('/api/dashboard',  authMiddleware, dashboardRouter)
 
 // ── Error handler ────────────────────────────────────────────
 app.use(errorHandler)
