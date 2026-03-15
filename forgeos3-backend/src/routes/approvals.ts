@@ -38,9 +38,20 @@ approvalsRouter.post('/request', async (req, res) => {
   const parsed = RequestSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
 
+  const { runId, agentId, agentName, domain, toolName, payload, reason } = parsed.data
+
   const { data, error } = await supabase
     .from('approval_requests')
-    .insert({ ...parsed.data, status: 'pending' })
+    .insert({
+      run_id:     runId,
+      agent_id:   agentId,
+      agent_name: agentName,
+      domain,
+      tool_name:  toolName,
+      payload,
+      reason,
+      status:     'pending',
+    })
     .select()
     .single()
 
@@ -48,10 +59,10 @@ approvalsRouter.post('/request', async (req, res) => {
 
   await logAuditEvent({
     type:    'approval_requested',
-    runId:   parsed.data.runId,
-    agentId: parsed.data.agentId,
-    domain:  parsed.data.domain,
-    data:    { toolName: parsed.data.toolName, reason: parsed.data.reason },
+    runId,
+    agentId,
+    domain,
+    data:    { toolName, reason },
   })
 
   res.status(201).json(data)
