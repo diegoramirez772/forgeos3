@@ -9,6 +9,7 @@ import { runsRouter      } from './routes/runs'
 import { toolsRouter     } from './routes/tools'
 import { approvalsRouter } from './routes/approvals'
 import { authRouter      } from './routes/auth'
+import { sandboxRouter   } from './routes/sandbox'
 import { errorHandler    } from './middleware/errorHandler'
 
 const app = express()
@@ -29,6 +30,7 @@ app.use('/api/agents',    agentsRouter)
 app.use('/api/runs',      runsRouter)
 app.use('/api/tools',     toolsRouter)
 app.use('/api/approvals', approvalsRouter)
+app.use('/api/sandbox',   sandboxRouter)
 
 // ── Error handler ────────────────────────────────────────────
 app.use(errorHandler)
