@@ -1,16 +1,48 @@
 import type { Request, Response, NextFunction } from 'express'
+import { logger } from '../lib/logger'
 
-const SAFE_MESSAGES = [
-  'Not found', 'Unauthorized', 'Forbidden',
-  'Bad request', 'Validation error', 'Already exists'
-]
+// Client-safe error messages — never expose Supabase internals
+const CLIENT_SAFE: Record<number, string> = {
+  400: 'Bad request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
+  404: 'Not found',
+  409: 'Conflict — resource already exists',
+  422: 'Unprocessable entity',
+  429: 'Too many requests',
+  500: 'An unexpected error occurred',
+  503: 'Service temporarily unavailable',
+}
 
-export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
-  console.error('[ERROR]', err.message)
+export class AppError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message)
+    this.name = 'AppError'
+  }
+}
 
-  // Never expose raw Supabase or internal error messages to the client
-  const isSafe = SAFE_MESSAGES.some(m => err.message?.toLowerCase().includes(m.toLowerCase()))
-  const message = isSafe ? err.message : 'An unexpected error occurred'
+export function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void {
+  // Log full error internally
+  logger.error({
+    message:  err.message,
+    stack:    err.stack,
+    method:   req.method,
+    path:     req.path,
+    body:     req.body,
+  })
 
-  res.status(500).json({ error: message })
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({
+      error: CLIENT_SAFE[err.statusCode] ?? err.message
+    })
+    return
+  }
+
+  // Never expose raw DB or internal errors to client
+  res.status(500).json({ error: CLIENT_SAFE[500] })
 }
