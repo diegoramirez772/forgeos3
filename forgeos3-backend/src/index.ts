@@ -11,6 +11,7 @@ import { approvalsRouter } from './routes/approvals'
 import { authRouter      } from './routes/auth'
 import { sandboxRouter   } from './routes/sandbox'
 import { errorHandler    } from './middleware/errorHandler'
+import { authMiddleware  } from './middleware/auth'
 
 const app = express()
 
@@ -24,13 +25,16 @@ app.get('/health', (_req, res) => {
 })
 
 // ── Routes ───────────────────────────────────────────────────
-app.use('/api/auth',      authRouter)
-app.use('/api',           registryRouter)
-app.use('/api/agents',    agentsRouter)
-app.use('/api/runs',      runsRouter)
-app.use('/api/tools',     toolsRouter)
-app.use('/api/approvals', approvalsRouter)
-app.use('/api/sandbox',   sandboxRouter)
+// Public — no auth required
+app.use('/api/auth', authRouter)
+app.use('/api',      registryRouter)
+
+// Protected — require valid JWT
+app.use('/api/agents',    authMiddleware, agentsRouter)
+app.use('/api/runs',      authMiddleware, runsRouter)
+app.use('/api/tools',     authMiddleware, toolsRouter)
+app.use('/api/approvals', authMiddleware, approvalsRouter)
+app.use('/api/sandbox',   authMiddleware, sandboxRouter)
 
 // ── Error handler ────────────────────────────────────────────
 app.use(errorHandler)
