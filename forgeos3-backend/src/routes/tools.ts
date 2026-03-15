@@ -20,19 +20,29 @@ toolsRouter.post('/evaluate', async (req, res) => {
 
   const { runId, toolName, domain, input } = parsed.data
 
-  // 1. Get run to find policy info
+  // 1. Get run + validate it exists and belongs to correct domain
   const { data: run, error: runError } = await supabase
     .from('agent_runs')
-    .select('*, created_agents(policy_preset_id, risk_mode, tool_pack_id)')
+    .select('*, created_agents(id, policy_preset_id, risk_mode, tool_pack_id)')
     .eq('id', runId)
     .single()
 
   if (runError || !run) return res.status(404).json({ error: 'Run not found' })
 
-  // 2. Get tool sensitivity from tool_pack_items
-  let sensitivity: string   = 'low'
-  let requiresApproval       = false
-  let policyLevel: string    = 'medium'
+  // 2. Validate run domain matches request domain
+  if (run.domain !== domain) {
+    return res.status(400).json({ error: `Run domain "${run.domain}" does not match request domain "${domain}"` })
+  }
+
+  // 3. Validate run is still active
+  if (run.status === 'finished' || run.status === 'blocked') {
+    return res.status(400).json({ error: `Run is already ${run.status} — cannot evaluate tools` })
+  }
+
+  // 4. Get tool sensitivity
+  let sensitivity: string  = 'low'
+  let requiresApproval      = false
+  let policyLevel: string   = 'medium'
 
   if (run.created_agents?.tool_pack_id) {
     const { data: toolItem } = await supabase
@@ -57,7 +67,7 @@ toolsRouter.post('/evaluate', async (req, res) => {
     if (preset) policyLevel = preset.level
   }
 
-  // 3. Evaluate policy
+  // 5. Evaluate policy
   const result = evaluatePolicy({
     toolName,
     domain,
@@ -67,11 +77,11 @@ toolsRouter.post('/evaluate', async (req, res) => {
     requiresApproval,
   })
 
-  // 4. Calculate risk score
+  // 6. Calculate risk score
   const scoreMap: Record<string, number> = { low: 5, medium: 10, high: 20, critical: 35 }
   const riskScore = scoreMap[sensitivity] ?? 5
 
-  // 5. Log the tool event
+  // 7. Log tool event
   const { data: toolEvent } = await supabase
     .from('tool_events')
     .insert({
@@ -86,13 +96,13 @@ toolsRouter.post('/evaluate', async (req, res) => {
     .select()
     .single()
 
-  // 6. Update run loop_risk_score
+  // 8. Update loop_risk_score
   await supabase
     .from('agent_runs')
     .update({ loop_risk_score: run.loop_risk_score + riskScore })
     .eq('id', runId)
 
-  // 7. Audit
+  // 9. Audit
   await logAuditEvent({
     type:   result.decision === 'blocked' ? 'tool_blocked' : 'tool_evaluated',
     runId,
@@ -120,6 +130,15 @@ toolsRouter.post('/log', async (req, res) => {
 
   const { toolEventId, output, durationMs } = parsed.data
 
+  // Validate tool event exists
+  const { data: existing } = await supabase
+    .from('tool_events')
+    .select('id')
+    .eq('id', toolEventId)
+    .single()
+
+  if (!existing) return res.status(404).json({ error: 'Tool event not found' })
+
   const { data, error } = await supabase
     .from('tool_events')
     .update({ output: output ?? null, duration_ms: durationMs ?? null })
@@ -127,7 +146,7 @@ toolsRouter.post('/log', async (req, res) => {
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return res.status(500).json({ error: 'Failed to log tool result' })
 
   await logAuditEvent({
     type: 'tool_executed',
@@ -137,7 +156,6 @@ toolsRouter.post('/log', async (req, res) => {
   res.json(data)
 })
 
-// Loop risk evaluation
 const LoopSchema = z.object({
   runId: z.string().uuid(),
 })
@@ -148,13 +166,22 @@ toolsRouter.post('/evaluate-loop', async (req, res) => {
 
   const { runId } = parsed.data
 
+  // Validate run exists
+  const { data: run } = await supabase
+    .from('agent_runs')
+    .select('id')
+    .eq('id', runId)
+    .single()
+
+  if (!run) return res.status(404).json({ error: 'Run not found' })
+
   const { data: events, error } = await supabase
     .from('tool_events')
     .select('tool_name, decision, risk_score, timestamp')
     .eq('run_id', runId)
     .order('timestamp', { ascending: true })
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return res.status(500).json({ error: 'Failed to fetch tool events' })
 
   const result = evaluateLoop(
     (events ?? []).map(e => ({
@@ -165,7 +192,6 @@ toolsRouter.post('/evaluate-loop', async (req, res) => {
     }))
   )
 
-  // Update run loop_risk_score
   await supabase
     .from('agent_runs')
     .update({ loop_risk_score: result.score })

@@ -5,15 +5,28 @@ import { logAuditEvent } from '../engine/auditLayer'
 
 export const approvalsRouter = Router()
 
-approvalsRouter.get('/', async (_req, res) => {
-  const { data, error } = await supabase
+// ── GET /api/approvals — paginated ────────────────────────────
+approvalsRouter.get('/', async (req, res) => {
+  const limit  = Math.min(parseInt(req.query.limit  as string) || 20, 100)
+  const offset = parseInt(req.query.offset as string) || 0
+  const status = req.query.status as string | undefined
+  const domain = req.query.domain as string | undefined
+
+  let query = supabase
     .from('approval_requests')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
-  if (error) return res.status(500).json({ error: error.message })
-  res.json(data)
+    .range(offset, offset + limit - 1)
+
+  if (status) query = query.eq('status', status)
+  if (domain) query = query.eq('domain', domain)
+
+  const { data, error, count } = await query
+  if (error) return res.status(500).json({ error: 'Failed to fetch approvals' })
+  res.json({ data, total: count, limit, offset })
 })
 
+// ── GET /api/approvals/:id ────────────────────────────────────
 approvalsRouter.get('/:id', async (req, res) => {
   const { data, error } = await supabase
     .from('approval_requests')
@@ -24,6 +37,7 @@ approvalsRouter.get('/:id', async (req, res) => {
   res.json(data)
 })
 
+// ── POST /api/approvals/request ───────────────────────────────
 const RequestSchema = z.object({
   runId:     z.string().uuid(),
   agentId:   z.string(),
@@ -40,6 +54,22 @@ approvalsRouter.post('/request', async (req, res) => {
 
   const { runId, agentId, agentName, domain, toolName, payload, reason } = parsed.data
 
+  // Validate run exists and belongs to the agent
+  const { data: run } = await supabase
+    .from('agent_runs')
+    .select('id, agent_id')
+    .eq('id', runId)
+    .single()
+
+  if (!run) return res.status(404).json({ error: 'Run not found' })
+  if (run.agent_id !== agentId) return res.status(403).json({ error: 'Run does not belong to this agent' })
+
+  // Update run status to waiting_approval
+  await supabase
+    .from('agent_runs')
+    .update({ status: 'waiting_approval' })
+    .eq('id', runId)
+
   const { data, error } = await supabase
     .from('approval_requests')
     .insert({
@@ -55,7 +85,7 @@ approvalsRouter.post('/request', async (req, res) => {
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return res.status(500).json({ error: 'Failed to create approval request' })
 
   await logAuditEvent({
     type:    'approval_requested',
@@ -68,6 +98,7 @@ approvalsRouter.post('/request', async (req, res) => {
   res.status(201).json(data)
 })
 
+// ── POST /api/approvals/:id/resolve ───────────────────────────
 const ResolveSchema = z.object({
   status:     z.enum(['approved', 'rejected']),
   reviewedBy: z.string().email(),
@@ -76,6 +107,16 @@ const ResolveSchema = z.object({
 approvalsRouter.post('/:id/resolve', async (req, res) => {
   const parsed = ResolveSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+  // Validate approval exists and is still pending
+  const { data: existing } = await supabase
+    .from('approval_requests')
+    .select('id, status, run_id')
+    .eq('id', req.params.id)
+    .single()
+
+  if (!existing) return res.status(404).json({ error: 'Approval not found' })
+  if (existing.status !== 'pending') return res.status(400).json({ error: `Approval is already ${existing.status}` })
 
   const { status, reviewedBy } = parsed.data
 
@@ -90,11 +131,17 @@ approvalsRouter.post('/:id/resolve', async (req, res) => {
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return res.status(500).json({ error: 'Failed to resolve approval' })
+
+  // Update run status back to running if approved, blocked if rejected
+  await supabase
+    .from('agent_runs')
+    .update({ status: status === 'approved' ? 'running' : 'blocked' })
+    .eq('id', existing.run_id)
 
   await logAuditEvent({
     type:  'approval_resolved',
-    runId: data.run_id,
+    runId: existing.run_id,
     data:  { approvalId: req.params.id, status, reviewedBy },
   })
 
