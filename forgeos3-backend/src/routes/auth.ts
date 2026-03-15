@@ -31,8 +31,16 @@ authRouter.post('/signup', async (req, res) => {
 
   if (error) return res.status(400).json({ error: error.message })
 
+  // Save to users table
+  await supabase.from('users').insert({
+    id:    data.user.id,
+    name,
+    email,
+    role:  'member',
+  })
+
   const token = jwt.sign(
-    { id: data.user.id, email: data.user.email },
+    { id: data.user.id, email: data.user.email, name },
     process.env.JWT_SECRET!,
     { expiresIn: '7d' }
   )
