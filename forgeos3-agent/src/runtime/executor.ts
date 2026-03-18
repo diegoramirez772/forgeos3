@@ -1,15 +1,34 @@
-export function executeTool(tool: string): string {
+import { analyzeIntent } from "./intentAnalysis"
+import { planTool } from "./toolPlanner"
+import { policyGate } from "./policyGate"
+import { tools } from "./toolRegistry"
 
-  switch (tool) {
+export async function execute(input: string) {
 
-    case "healthTool":
-      return "Sistema de salud funcionando correctamente"
+  console.log("=== ForgeOS Runtime ===")
+  console.log("Input:", input)
 
-    case "marketingTool":
-      return "Análisis de marketing ejecutado"
+  const intentResult = analyzeIntent(input)
+  console.log("Intent:", intentResult)
 
-    default:
-      return "No se pudo ejecutar ninguna herramienta"
+  const toolName = planTool(intentResult.intent)
+  console.log("Tool:", toolName)
+
+  const allowed = policyGate(toolName)
+
+  if (!allowed) {
+    console.log("Resultado final: Tool bloqueada por policy")
+    return
   }
 
+  const tool = tools[toolName]
+
+  if (!tool) {
+    console.log("Resultado final: Tool no encontrada")
+    return
+  }
+
+  const result = await tool.run()
+
+  console.log("Resultado final:", result)
 }

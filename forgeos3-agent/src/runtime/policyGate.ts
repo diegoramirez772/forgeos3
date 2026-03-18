@@ -1,11 +1,10 @@
-export function policyCheck(tool: string): boolean {
+export function policyGate(toolName: string): boolean {
 
-  const allowedTools = [
-  "healthTool",
-  "marketingTool",
-  "govTool"
-]
+  const blockedTools: string[] = []
 
+  if (blockedTools.includes(toolName)) {
+    return false
+  }
 
-  return allowedTools.includes(tool)
+  return true
 }
