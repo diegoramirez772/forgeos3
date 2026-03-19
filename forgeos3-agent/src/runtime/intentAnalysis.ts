@@ -1,30 +1,38 @@
-export function analyzeIntent(input: string) {
+type IntentResult = {
+  intent: string
+  confidence: number
+}
+
+const intentKeywords: Record<string, string[]> = {
+  health: ["salud", "hospital", "medico"],
+  marketing: ["marketing", "campaña", "publicidad"],
+  gov: ["gobierno", "estado", "datos"]
+}
+
+export function analyzeIntent(input: string): IntentResult {
 
   const text = input.toLowerCase()
 
-  if (text.includes("salud") || text.includes("health")) {
-    return {
-      intent: "health",
-      confidence: 0.9
-    }
-  }
+  for (const intent in intentKeywords) {
 
-  if (text.includes("marketing")) {
-    return {
-      intent: "marketing",
-      confidence: 0.9
-    }
-  }
+    const keywords = intentKeywords[intent]
 
-  if (text.includes("gobierno") || text.includes("gov")) {
-    return {
-      intent: "gov",
-      confidence: 0.9
+    for (const word of keywords) {
+
+      if (text.includes(word)) {
+        return {
+          intent,
+          confidence: 0.9
+        }
+      }
+
     }
+
   }
 
   return {
     intent: "unknown",
     confidence: 0.5
   }
+
 }
