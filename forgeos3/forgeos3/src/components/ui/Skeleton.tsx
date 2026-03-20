@@ -60,3 +60,29 @@ export const ErrorBanner: FC<ErrorBannerProps> = ({ message, onRetry }) => (
     )}
   </div>
 )
+
+// ─── Spinner ───────────────────────────────────────────────────────────────
+
+interface SpinnerProps { size?: 'sm' | 'md' | 'lg'; className?: string }
+const spinnerSizes = { sm: 'w-3.5 h-3.5 border-2', md: 'w-5 h-5 border-2', lg: 'w-8 h-8 border-[3px]' }
+export const Spinner: FC<SpinnerProps> = ({ size = 'md', className = '' }) => (
+  <span className={`inline-block rounded-full border-forge-muted border-t-forge-amber animate-spin ${spinnerSizes[size]} ${className}`}
+    role="status" aria-label="Cargando..." />
+)
+
+// ─── ErrorState ────────────────────────────────────────────────────────────
+
+interface ErrorStateProps { message: string; onRetry?: () => void }
+export const ErrorState: FC<ErrorStateProps> = ({ message, onRetry }) => (
+  <div className="flex flex-col items-center justify-center py-12 gap-3">
+    <div className="w-10 h-10 rounded-full bg-forge-red/10 border border-forge-red/20 flex items-center justify-center">
+      <span className="text-forge-red text-lg font-bold">!</span>
+    </div>
+    <p className="text-sm text-forge-subtle text-center max-w-xs">{message}</p>
+    {onRetry && (
+      <button onClick={onRetry} className="text-xs text-forge-amber underline underline-offset-2 hover:opacity-80 transition-colors">
+        Reintentar
+      </button>
+    )}
+  </div>
+)

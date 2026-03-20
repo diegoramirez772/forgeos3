@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { AlertTriangle, ShieldOff, RefreshCw, Activity, Zap, TrendingUp, Info } from 'lucide-react'
 import { TopBar } from '../components/layout/TopBar'
@@ -33,10 +33,17 @@ function fakeHistory(current: number) {
 }
 
 export function LoopGuard() {
-  const { runs } = useRunStore()
+  const { runs, fetchRuns } = useRunStore()
   const [killModal, setKillModal] = useState<Run | null>(null)
   const [killed, setKilled] = useState<Set<string>>(new Set())
   const [safeMode, setSafeMode] = useState<Set<string>>(new Set())
+
+  // Carga inicial + polling cada 5s para loop risk scores reales
+  useEffect(() => {
+    fetchRuns()
+    const interval = setInterval(() => { fetchRuns() }, 5000)
+    return () => clearInterval(interval)
+  }, [fetchRuns])
 
   const totalHigh = runs.filter(r => r.loopRiskScore > 30).length
   const totalElevated = runs.filter(r => r.loopRiskScore > 15 && r.loopRiskScore <= 30).length

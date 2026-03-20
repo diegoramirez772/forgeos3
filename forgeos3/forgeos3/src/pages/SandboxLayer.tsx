@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Box, Clock, Wifi, WifiOff, Key, ScrollText,
@@ -68,13 +68,18 @@ const LOG_STYLE = {
 }
 
 export function SandboxLayer() {
-  const { runs } = useRunStore()
+  const { runs, fetchRuns } = useRunStore()
   const [config, setConfig]         = useState<SandboxConfig>(DEFAULT_CONFIG)
   const [status, setStatus]         = useState<SandboxStatus>('idle')
   const [logs, setLogs]             = useState<SandboxLog[]>(MOCK_LOGS)
   const [logsOpen, setLogsOpen]     = useState(true)
   const [killModal, setKillModal]   = useState(false)
   const [hostInput, setHostInput]   = useState('')
+
+  // Carga inicial — sincroniza el estado del sandbox con la API
+  useEffect(() => {
+    fetchRuns()
+  }, [fetchRuns])
 
   const activeRun = runs.find(r => r.status === 'running' || r.status === 'waiting_approval')
 

@@ -45,7 +45,8 @@ export function BuilderConsole() {
   const [approvals, setApprovals] = useState<string[]>([])
   const [deploying, setDeploying] = useState(false)
   const [deployed, setDeployed] = useState(false)
-  const { addAgent } = useAgentStore()
+  const [deployError, setDeployError] = useState<string | null>(null)
+  const { createAgent } = useAgentStore()
   const navigate = useNavigate()
 
   const availableToolPacks = TOOL_PACKS.filter(p => p.domain === domain)
@@ -73,10 +74,9 @@ export function BuilderConsole() {
   const deploy = async () => {
     if (deploying) return
     setDeploying(true)
+    setDeployError(null)
     try {
-      await new Promise(r => setTimeout(r, 1800))
-      addAgent({
-        id: `ag-${Date.now()}`,
+      await createAgent({
         name,
         description,
         runtime: 'openclaw',
@@ -86,12 +86,11 @@ export function BuilderConsole() {
         riskMode,
         requiresApprovalFor: approvals,
         status: 'active',
-        createdAt: new Date().toISOString(),
       })
       setDeployed(true)
       setTimeout(() => navigate('/sentinel'), 1800)
     } catch (err) {
-      console.error('Deploy error:', err)
+      setDeployError(err instanceof Error ? err.message : 'Deploy failed — check backend')
     } finally {
       setDeploying(false)
     }
@@ -250,12 +249,12 @@ export function BuilderConsole() {
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <span className="text-sm font-semibold text-forge-white">{tp.name}</span>
-                          <span className="text-[11px] text-forge-subtle ml-2">{tp.tools.length} tools</span>
+                          <span className="text-[11px] text-forge-subtle ml-2">{(tp.tools ?? []).length} tools</span>
                         </div>
                         {toolPackId === tp.id && <Check size={13} className="text-amber-400" />}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {tp.tools.map(t => (
+                        {(tp.tools ?? []).map(t => (
                           <code key={t.id} className={`text-[10px] px-2 py-0.5 rounded-lg border font-mono ${SENSITIVITY_STYLE[t.sensitivity]}`}>
                             {t.name}
                           </code>
@@ -322,8 +321,8 @@ export function BuilderConsole() {
                     Require Human Approval For
                   </label>
                   <div className="space-y-2">
-                    {selectedPack.tools.map(t => {
-                      const checked = approvals.includes(t.name) || t.requiresApproval
+                    {(selectedPack.tools ?? []).map(t => {
+                      const checked = approvals.includes(t.name) || (t.requiresApproval ?? false)
                       return (
                         <div key={t.id} className="flex items-center justify-between p-3.5 bg-forge-surface border border-forge-border rounded-xl">
                           <div className="flex items-center gap-3">
@@ -335,7 +334,7 @@ export function BuilderConsole() {
                               {t.sensitivity}
                             </span>
                           </div>
-                          <Toggle checked={checked} onChange={() => !t.requiresApproval && toggleApproval(t.name)} />
+                          <Toggle checked={checked} onChange={() => !(t.requiresApproval ?? false) && toggleApproval(t.name)} />
                         </div>
                       )
                     })}
@@ -370,6 +369,13 @@ export function BuilderConsole() {
                   </div>
                 ))}
               </div>
+
+              {deployError && (
+                <div className="flex items-center gap-3 p-3.5 bg-red-500/8 border border-red-500/20 rounded-xl">
+                  <AlertTriangle size={14} className="text-red-500 shrink-0" />
+                  <p className="text-xs text-red-400">{deployError}</p>
+                </div>
+              )}
 
               <button onClick={deploy} disabled={deploying}
                 className="w-full flex items-center justify-center gap-2.5 py-4 bg-amber-400 text-black font-bold rounded-2xl hover:bg-amber-300 transition-all text-sm disabled:opacity-60 disabled:cursor-not-allowed"

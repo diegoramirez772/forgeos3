@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Run } from '../types/run'
 import type { ApprovalRequest } from '../types/approval'
-import { MOCK_RUNS, MOCK_APPROVALS } from '../lib/constants'
+import api from '../lib/api'
 
 interface RunState {
   runs: Run[]
@@ -17,10 +17,10 @@ interface RunState {
   clearError: () => void
 }
 
-export const useRunStore = create<RunState>((set) => ({
-  runs: MOCK_RUNS,
-  selectedRun: MOCK_RUNS[1],
-  approvals: MOCK_APPROVALS,
+export const useRunStore = create<RunState>((set, get) => ({
+  runs: [],
+  selectedRun: null,
+  approvals: [],
   loading: false,
   loadingApprovals: false,
   error: null,
@@ -28,13 +28,14 @@ export const useRunStore = create<RunState>((set) => ({
   fetchRuns: async () => {
     set({ loading: true, error: null })
     try {
-      await new Promise(r => setTimeout(r, 600))
-
-      // TODO Día 3: reemplazar por llamada real
-      // const { data } = await api.get('/api/runs')
-      // set({ runs: data.data, loading: false })
-
-      set({ runs: MOCK_RUNS, loading: false })
+      const { data } = await api.get<{ data: Run[] }>('/api/runs')
+      const runs = data.data
+      const current = get().selectedRun
+      set({
+        runs,
+        selectedRun: current ? runs.find(r => r.id === current.id) ?? runs[0] ?? null : runs[0] ?? null,
+        loading: false,
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch runs'
       set({ error: message, loading: false })
@@ -44,13 +45,8 @@ export const useRunStore = create<RunState>((set) => ({
   fetchApprovals: async () => {
     set({ loadingApprovals: true, error: null })
     try {
-      await new Promise(r => setTimeout(r, 600))
-
-      // TODO Día 3: reemplazar por llamada real
-      // const { data } = await api.get('/api/approvals')
-      // set({ approvals: data.data, loadingApprovals: false })
-
-      set({ approvals: MOCK_APPROVALS, loadingApprovals: false })
+      const { data } = await api.get<{ data: ApprovalRequest[] }>('/api/approvals')
+      set({ approvals: data.data, loadingApprovals: false })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch approvals'
       set({ error: message, loadingApprovals: false })

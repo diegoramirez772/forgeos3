@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import api from '../lib/api'
 
 interface User {
   id: string
@@ -25,22 +26,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: false,
   error: null,
 
-  login: async (email: string, _password: string) => {
+  login: async (email: string, password: string) => {
     set({ loading: true, error: null })
-    void _password
     try {
-      await new Promise(r => setTimeout(r, 800))
-
-      // TODO Día 3: reemplazar por llamada real
-      // const { data } = await api.post('/api/auth/login', { email, password })
-      // const { token, user } = data
-      // localStorage.setItem('forgeos3_token', token)
-      // set({ user, token, isAuthenticated: true, loading: false })
-
-      const mockUser = { id: 'u-1', name: email.split('@')[0], email }
-      const mockToken = 'mock_token_' + Date.now()
-      localStorage.setItem('forgeos3_token', mockToken)
-      set({ user: mockUser, token: mockToken, isAuthenticated: true, loading: false })
+      const { data } = await api.post<{ token: string; user: User }>('/api/auth/login', { email, password })
+      localStorage.setItem('forgeos3_token', data.token)
+      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid credentials'
       set({ error: message, loading: false })
@@ -48,22 +39,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signup: async (name: string, email: string, _password: string) => {
+  signup: async (name: string, email: string, password: string) => {
     set({ loading: true, error: null })
-    void _password
     try {
-      await new Promise(r => setTimeout(r, 1000))
-
-      // TODO Día 3: reemplazar por llamada real
-      // const { data } = await api.post('/api/auth/signup', { name, email, password })
-      // const { token, user } = data
-      // localStorage.setItem('forgeos3_token', token)
-      // set({ user, token, isAuthenticated: true, loading: false })
-
-      const mockUser = { id: 'u-1', name, email }
-      const mockToken = 'mock_token_' + Date.now()
-      localStorage.setItem('forgeos3_token', mockToken)
-      set({ user: mockUser, token: mockToken, isAuthenticated: true, loading: false })
+      const { data } = await api.post<{ token: string; user: User }>('/api/auth/signup', { name, email, password })
+      localStorage.setItem('forgeos3_token', data.token)
+      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong'
       set({ error: message, loading: false })

@@ -65,11 +65,11 @@ export function Dashboard() {
     fetchAgents()
   }, [fetchRuns, fetchApprovals, fetchAgents])
 
-  const pending   = approvals.filter(a => a.status === 'pending').length
-  const blocked   = runs.flatMap(r => r.toolEvents).filter(e => e.decision === 'blocked').length
-  const allowed   = runs.flatMap(r => r.toolEvents).filter(e => e.decision === 'allowed').length
+  const pending   = (approvals ?? []).filter(a => a.status === 'pending').length
+  const blocked   = runs.flatMap(r => (r.toolEvents ?? [])).filter(e => e?.decision === 'blocked').length
+  const allowed   = runs.flatMap(r => (r.toolEvents ?? [])).filter(e => e?.decision === 'allowed').length
   const allEvents = runs
-    .flatMap(r => r.toolEvents.map(e => ({ ...e, agentName: r.agentName, domain: r.domain })))
+    .flatMap(r => (r.toolEvents ?? []).map(e => ({ ...e, agentName: r.agentName, domain: r.domain })))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   const hour = new Date().getHours()
@@ -154,7 +154,7 @@ export function Dashboard() {
                 <div className={`text-3xl font-bold tracking-tight mb-1 ${accent}`}>{value}</div>
                 <div className="text-[11px] text-forge-subtle">{sub}</div>
                 <div className="absolute bottom-0 left-0 right-0 h-10 opacity-20">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={40} minWidth={0}>
                     <AreaChart data={MINI_CHART}>
                       <Area type="monotone" dataKey="v" stroke="currentColor" fill="currentColor" strokeWidth={1} />
                     </AreaChart>
@@ -363,7 +363,7 @@ export function Dashboard() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Shield size={9} className="text-blue-400" />
-                        <span>{agent.policyPresetId.replace('pp-', '')}</span>
+                        <span>{(agent.policyPresetId ?? '').replace('pp-', '') || '—'}</span>
                       </div>
                       {run && (
                         <div className="flex items-center gap-1 ml-auto">
