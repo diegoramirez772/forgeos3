@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import api from '../lib/api'
 
 interface User {
   id: string
@@ -8,22 +9,53 @@ interface User {
 
 interface AuthState {
   user: User | null
+  token: string | null
   isAuthenticated: boolean
+  loading: boolean
+  error: string | null
   login: (email: string, password: string) => Promise<void>
   signup: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
+  clearError: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  isAuthenticated: false,
-  login: async (email: string, _password: string) => {
-    await new Promise(r => setTimeout(r, 800))
-    set({ user: { id: 'u-1', name: email.split('@')[0], email }, isAuthenticated: true })
+  token: localStorage.getItem('forgeos3_token'),
+  isAuthenticated: !!localStorage.getItem('forgeos3_token'),
+  loading: false,
+  error: null,
+
+  login: async (email: string, password: string) => {
+    set({ loading: true, error: null })
+    try {
+      const { data } = await api.post<{ token: string; user: User }>('/api/auth/login', { email, password })
+      localStorage.setItem('forgeos3_token', data.token)
+      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid credentials'
+      set({ error: message, loading: false })
+      throw err
+    }
   },
-  signup: async (name: string, email: string, _password: string) => {
-    await new Promise(r => setTimeout(r, 1000))
-    set({ user: { id: 'u-1', name, email }, isAuthenticated: true })
+
+  signup: async (name: string, email: string, password: string) => {
+    set({ loading: true, error: null })
+    try {
+      const { data } = await api.post<{ token: string; user: User }>('/api/auth/signup', { name, email, password })
+      localStorage.setItem('forgeos3_token', data.token)
+      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong'
+      set({ error: message, loading: false })
+      throw err
+    }
   },
-  logout: () => set({ user: null, isAuthenticated: false }),
+
+  logout: () => {
+    localStorage.removeItem('forgeos3_token')
+    set({ user: null, token: null, isAuthenticated: false, error: null })
+  },
+
+  clearError: () => set({ error: null }),
 }))

@@ -322,15 +322,15 @@ export function SandboxLayer() {
               <div className="p-5 grid grid-cols-3 gap-4">
                 {[
                   {
-                    label: 'Memory',   used: status === 'running' ? 48  : 0,  max: config.maxMemoryMb, unit: 'mb',
+                    label: 'Memory',   used: Math.round(config.maxMemoryMb * 0.07),  max: config.maxMemoryMb, unit: 'mb',
                     color: 'bg-blue-500', warn: 80,
                   },
                   {
-                    label: 'CPU',      used: status === 'running' ? 12  : 0,  max: config.maxCpuPct,   unit: '%',
+                    label: 'CPU',      used: Math.round(config.maxCpuPct   * 0.08),  max: config.maxCpuPct,   unit: '%',
                     color: 'bg-purple-500', warn: 80,
                   },
                   {
-                    label: 'Timeout',  used: status === 'running' ? 1240: 0,  max: config.timeoutMs,   unit: 'ms',
+                    label: 'Timeout',  used: Math.round(config.timeoutMs   * 0.064), max: config.timeoutMs,   unit: 'ms',
                     color: 'bg-amber-400', warn: 70,
                   },
                 ].map(({ label, used, max, unit, color, warn }) => {
@@ -346,9 +346,8 @@ export function SandboxLayer() {
                       </div>
                       <div className="h-2 bg-forge-elevated rounded-full overflow-hidden">
                         <motion.div
-                          initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
                           className={`h-full rounded-full ${isWarn ? 'bg-forge-red' : color}`}
                         />
                       </div>
