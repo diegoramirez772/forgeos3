@@ -4,8 +4,7 @@ export interface ToolDecision   { decision: 'allowed' | 'blocked' | 'approval_re
 export interface ToolResult     { runId: string; toolName: string; output: Record<string, unknown>; durationMs: number }
 export interface RunResult      { runId: string; status: 'finished' | 'blocked'; output?: string }
 
-// ⚠️ Cambia esta URL cuando Diego te pase la suya
-const BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000'
+const BASE_URL = 'https://forgeos3-production.up.railway.app'
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
