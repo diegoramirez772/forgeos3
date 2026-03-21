@@ -1,14 +1,75 @@
-export interface StartRunInput  { agentId: string; input: string }
-export interface ToolIntent     { runId: string; toolName: string; input: Record<string, unknown> }
-export interface ToolDecision   { decision: 'allowed' | 'blocked' | 'approval_required'; reason?: string }
-export interface ToolResult     { runId: string; toolName: string; output: Record<string, unknown>; durationMs: number }
-export interface RunResult      { runId: string; status: 'finished' | 'blocked'; output?: string }
+import axios from "axios"
 
-export const openclawAdapter = {
-  async startRun(_input: StartRunInput)                    { /* POST /api/runs/start */    },
-  async beforeToolCall(_intent: ToolIntent): Promise<ToolDecision> {
-    return { decision: 'allowed' }                         /* POST /api/tools/evaluate */
-  },
-  async afterToolCall(_result: ToolResult)                 { /* POST /api/tools/log */     },
-  async finishRun(_result: RunResult)                      { /* POST /api/runs/finish */   },
+const API_URL = process.env.VITE_API_URL
+
+export async function startRun(agent: string) {
+
+    try {
+
+        const response = await axios.post(`${API_URL}/runs/start`, {
+            agent
+        })
+
+        console.log("Run started:", response.data)
+
+        return response.data
+
+    } catch (error) {
+
+        console.log("API not available, using mock run")
+
+        return {
+            id: "mock-run-" + Date.now()
+        }
+
+    }
+
+}
+
+export async function finishRun(runId: string, result: any) {
+
+    try {
+
+        const response = await axios.post(`${API_URL}/runs/finish`, {
+            runId,
+            result
+        })
+
+        console.log("Run finished:", response.data)
+
+        return response.data
+
+    } catch (error) {
+
+        console.log("Mock finish run:", runId)
+
+    }
+
+}
+
+export async function beforeToolCall(tool: string, payload: any) {
+
+    try {
+
+        const response = await axios.post(`${API_URL}/tools/evaluate`, {
+            tool,
+            payload
+        })
+
+        if (!response.data.allowed) {
+
+            console.log("Tool blocked:", tool)
+            return false
+
+        }
+
+        return true
+
+    } catch (error) {
+
+        console.log("Skipping API tool check (mock mode)")
+        return true
+
+    }
+
 }

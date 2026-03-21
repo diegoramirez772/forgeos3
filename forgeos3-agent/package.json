@@ -6,13 +6,13 @@
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "demo:health":    "ts-node src/scenarios/healthScenario.ts",
-    "demo:gov":       "ts-node src/scenarios/govScenario.ts",
+    "demo:health": "ts-node src/scenarios/healthScenario.ts",
+    "demo:gov": "ts-node src/scenarios/govScenario.ts",
     "demo:marketing": "ts-node src/scenarios/marketingScenario.ts"
   },
   "dependencies": {
-    "axios": "^1.0.0",
-    "dotenv": "^16.0.0"
+    "axios": "^1.13.6",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
