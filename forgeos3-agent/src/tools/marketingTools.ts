@@ -1,20 +1,35 @@
-export async function analyzeCampaign() {
+// Escenario C — Marketing
+// summarize → allowed | draft → allowed | publish → approval_required
 
-    console.log("Analyzing campaign...")
-
-    return {
-        impressions: 12000,
-        conversions: 350
-    }
-
+export async function summarize(campaignId: string) {
+  return {
+    campaignId,
+    summary: "Q4 campaign — 3 content pillars: product launch, testimonials, seasonal promotions.",
+    audience: "25-45, tech-aware, LatAm",
+    budget_remaining: "$4,200 USD",
+  }
 }
 
-export async function generateMarketingInsights() {
+export async function draft(campaignId: string) {
+  return {
+    campaignId,
+    draft: "🚀 Big news! Our new product line is here. Designed for you. Built for tomorrow.",
+    format: "social_post",
+    channels: ["instagram", "linkedin"],
+    estimated_reach: 12000,
+  }
+}
 
-    console.log("Generating marketing insights...")
+export async function publish(campaignId: string, content: any) {
+  // approval_required — publica en canal externo
+  return {
+    campaignId,
+    published: true,
+    channels: ["instagram", "linkedin"],
+    timestamp: new Date().toISOString(),
+  }
+}
 
-    return {
-        insight: "Campaign performing well"
-    }
-
+export async function schedule(campaignId: string, date: string) {
+  return { campaignId, scheduled_for: date, status: "queued" }
 }
