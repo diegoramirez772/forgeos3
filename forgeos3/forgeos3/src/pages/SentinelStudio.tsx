@@ -51,7 +51,7 @@ export function SentinelStudio() {
   }, [fetchRuns])
 
   const run      = selectedRun || runs[0]
-  const riskData = run?.toolEvents.map((e, i) => ({ name: e.toolName, risk: e.riskScore, i: i + 1 })) || []
+  const riskData = (run?.toolEvents ?? []).map((e, i) => ({ name: e.toolName, risk: e.riskScore, i: i + 1 }))
   const sc       = run ? (STATUS_CONFIG[run.status] || STATUS_CONFIG['finished']) : null
 
   return (
@@ -140,7 +140,7 @@ export function SentinelStudio() {
                 <p className="text-sm text-forge-secondary leading-relaxed">"{run.input}"</p>
               </div>
               <div className="text-right shrink-0">
-                <div className={`text-3xl font-bold ${run.loopRiskScore > 30 ? 'text-red-500' : run.loopRiskScore > 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                <div className={`text-3xl font-bold ${(run.loopRiskScore ?? 0) > 30 ? 'text-red-500' : (run.loopRiskScore ?? 0) > 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
                   {run.loopRiskScore}
                 </div>
                 <div className="text-[10px] text-forge-subtle">loop risk</div>
@@ -152,7 +152,7 @@ export function SentinelStudio() {
               <div className="relative">
                 <div className="absolute top-4 left-4 right-4 h-px bg-forge-border" />
                 <div className="flex gap-8 relative overflow-x-auto no-scrollbar pb-2">
-                  {run.toolEvents.map((event, i) => {
+                  {(run.toolEvents ?? []).map((event, i) => {
                     const cfg    = D_CONFIG[event.decision]
                     const active  = selectedEvent?.id === event.id
                     const hovered = hoveredEvent === event.id
@@ -266,10 +266,10 @@ export function SentinelStudio() {
                 <div className="p-4 space-y-2.5">
                   {[
                     { label: 'Started',  value: timeAgo(run.startedAt) },
-                    { label: 'Events',   value: run.toolEvents.length },
-                    { label: 'Allowed',  value: run.toolEvents.filter(e => e.decision === 'allowed').length,           color: 'text-emerald-500' },
-                    { label: 'Blocked',  value: run.toolEvents.filter(e => e.decision === 'blocked').length,           color: 'text-red-500'     },
-                    { label: 'Approval', value: run.toolEvents.filter(e => e.decision === 'approval_required').length, color: 'text-amber-500'   },
+                    { label: 'Events',   value: (run.toolEvents ?? []).length },
+                    { label: 'Allowed',  value: (run.toolEvents ?? []).filter(e => e.decision === 'allowed').length,           color: 'text-emerald-500' },
+                    { label: 'Blocked',  value: (run.toolEvents ?? []).filter(e => e.decision === 'blocked').length,           color: 'text-red-500'     },
+                    { label: 'Approval', value: (run.toolEvents ?? []).filter(e => e.decision === 'approval_required').length, color: 'text-amber-500'   },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="flex items-center justify-between">
                       <span className="text-xs text-forge-subtle">{label}</span>

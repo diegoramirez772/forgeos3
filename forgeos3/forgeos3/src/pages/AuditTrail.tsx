@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   BookOpen, Filter, Download, CheckCircle, XCircle, Clock,
   ChevronDown, ChevronUp, Shield, Activity, User, X
 } from 'lucide-react'
 import { TopBar } from '../components/layout/TopBar'
+import { SkeletonCard, ErrorBanner } from '../components/ui/Skeleton'
 import { Badge } from '../components/ui/Badge'
 import { useRunStore } from '../store/runStore'
 import type { ToolEvent, Run } from '../types/run'
@@ -40,18 +41,24 @@ const DOMAIN_PILL: Record<string, string> = {
 }
 
 export function AuditTrail() {
-  const { runs, approvals } = useRunStore()
+  const { runs, approvals, loading, error, fetchRuns, fetchApprovals } = useRunStore()
   const [domainFilter, setDomainFilter] = useState<DomainFilter>('all')
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>('all')
   const [kindFilter, setKindFilter] = useState<EntryKindFilter>('all')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showFilters, setShowFilters] = useState(false)
 
+  // Carga inicial de runs y approvals
+  useEffect(() => {
+    fetchRuns()
+    fetchApprovals()
+  }, [fetchRuns, fetchApprovals])
+
   const entries: AuditEntry[] = useMemo(() => {
     const list: AuditEntry[] = []
 
     runs.forEach(r => {
-      r.toolEvents.forEach(e => {
+      (r.toolEvents ?? []).forEach(e => {
         list.push({
           kind: 'tool',
           event: { ...e, agentName: r.agentName, domain: r.domain, runId: r.id },
@@ -142,6 +149,19 @@ export function AuditTrail() {
       />
 
       <div className="px-8 py-6 space-y-5">
+
+        {error && (
+          <ErrorBanner message={error} onRetry={() => { fetchRuns(); fetchApprovals() }} />
+        )}
+
+        {loading && entries.length === 0 && (
+          <div className="space-y-3">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        )}
+
         <div className="grid grid-cols-4 gap-3">
           {[
             { label: 'Total Events', value: entries.length, color: 'text-forge-white' },
@@ -400,8 +420,8 @@ export function AuditTrail() {
                                 <p className="text-xs text-forge-secondary">{entry.run.input}</p>
                               </div>
                               <div className="flex items-center gap-4 text-[10px] text-forge-subtle">
-                                <span>Loop Risk: <span className="text-forge-primary font-bold">{entry.run.loopRiskScore}</span></span>
-                                <span>Tools: <span className="text-forge-primary font-bold">{entry.run.toolEvents.length}</span></span>
+                                <span>Loop Risk: <span className="text-forge-primary font-bold">{entry.run.loopRiskScore ?? 0}</span></span>
+                                <span>Tools: <span className="text-forge-primary font-bold">{(entry.run.toolEvents ?? []).length}</span></span>
                                 <span>Status: <span className="text-forge-primary font-bold">{entry.run.status}</span></span>
                               </div>
                             </div>

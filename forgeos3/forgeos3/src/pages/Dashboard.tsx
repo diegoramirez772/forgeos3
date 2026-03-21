@@ -255,16 +255,16 @@ export function Dashboard() {
                   ))
                 ) : (
                   runs.map(run => {
-                    const pct = Math.min(run.loopRiskScore, 100)
-                    const color = run.loopRiskScore > 30 ? 'bg-red-500' : run.loopRiskScore > 15 ? 'bg-amber-400' : 'bg-emerald-500'
-                    const textColor = run.loopRiskScore > 30 ? 'text-red-500' : run.loopRiskScore > 15 ? 'text-amber-500' : 'text-emerald-500'
+                    const pct = Math.min(run.loopRiskScore ?? 0, 100)
+                    const color = (run.loopRiskScore ?? 0) > 30 ? 'bg-red-500' : (run.loopRiskScore ?? 0) > 15 ? 'bg-amber-400' : 'bg-emerald-500'
+                    const textColor = (run.loopRiskScore ?? 0) > 30 ? 'text-red-500' : (run.loopRiskScore ?? 0) > 15 ? 'text-amber-500' : 'text-emerald-500'
                     return (
                       <div key={run.id}>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-[11px] text-forge-secondary truncate max-w-35">{run.agentName}</span>
                           <div className="flex items-center gap-2">
-                            {run.loopRiskScore > 30 && <AlertTriangle size={10} className="text-red-500" />}
-                            <span className={`text-xs font-bold ${textColor}`}>{run.loopRiskScore}</span>
+                            {(run.loopRiskScore ?? 0) > 30 && <AlertTriangle size={10} className="text-red-500" />}
+                            <span className={`text-xs font-bold ${textColor}`}>{run.loopRiskScore ?? 0}</span>
                           </div>
                         </div>
                         <div className="h-1.5 bg-forge-elevated rounded-full overflow-hidden">
@@ -368,7 +368,7 @@ export function Dashboard() {
                       {run && (
                         <div className="flex items-center gap-1 ml-auto">
                           <Eye size={9} />
-                          <span>risk {run.loopRiskScore}</span>
+                          <span>risk {run.loopRiskScore ?? 0}</span>
                         </div>
                       )}
                     </div>
