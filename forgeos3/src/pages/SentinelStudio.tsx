@@ -12,18 +12,18 @@ function timeAgo(ts: string) {
   return `${Math.round(diff / 3600000)}h ago`
 }
 
-const D_CONFIG: Record<string, { dot: string; ring: string; text: string; bg: string; label: string }> = {
-  allowed:           { dot: 'bg-emerald-500', ring: 'ring-emerald-500/25', text: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'allowed'  },
-  blocked:           { dot: 'bg-red-500',     ring: 'ring-red-500/25',     text: 'text-red-500',     bg: 'bg-red-500/10 border-red-500/20',         label: 'blocked'  },
-  approval_required: { dot: 'bg-amber-400',   ring: 'ring-amber-400/25',   text: 'text-amber-500',   bg: 'bg-amber-400/10 border-amber-400/20',     label: 'approval' },
+const D_CONFIG: Record<string, { dot: string; ring: string; text: string; bg: string; label: string; border: string }> = {
+  allowed: { dot: 'bg-emerald-500', ring: 'ring-emerald-500/40', text: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/20', label: 'allowed', border: 'border-emerald-500/60' },
+  blocked: { dot: 'bg-red-500', ring: 'ring-red-500/40', text: 'text-red-500', bg: 'bg-red-500/10 border-red-500/20', label: 'blocked', border: 'border-red-500/60' },
+  approval_required: { dot: 'bg-amber-400', ring: 'ring-amber-400/40', text: 'text-amber-500', bg: 'bg-amber-400/10 border-amber-400/20', label: 'approval', border: 'border-amber-400/60' },
 }
 
 const STATUS_CONFIG: Record<string, { text: string; dot: string }> = {
-  finished:         { text: 'text-emerald-500', dot: 'bg-emerald-500' },
-  blocked:          { text: 'text-red-500',     dot: 'bg-red-500'     },
-  waiting_approval: { text: 'text-amber-500',   dot: 'bg-amber-400'   },
-  running:          { text: 'text-blue-400',    dot: 'bg-blue-400'    },
-  safe_mode:        { text: 'text-red-500',     dot: 'bg-red-500'     },
+  finished: { text: 'text-emerald-500', dot: 'bg-emerald-500' },
+  blocked: { text: 'text-red-500', dot: 'bg-red-500' },
+  waiting_approval: { text: 'text-amber-500', dot: 'bg-amber-400' },
+  running: { text: 'text-blue-400', dot: 'bg-blue-400' },
+  safe_mode: { text: 'text-red-500', dot: 'bg-red-500' },
 }
 
 const DOMAIN_COLOR: Record<string, string> = {
@@ -34,20 +34,19 @@ export function SentinelStudio() {
   const { runs, selectedRun, setSelectedRun } = useRunStore()
   const [selectedEvent, setSelectedEvent] = useState<ToolEvent | null>(null)
   const [showPicker, setShowPicker] = useState(false)
+  const [hoveredEvent, setHoveredEvent] = useState<string | null>(null)
 
   const run = selectedRun || runs[0]
-  const riskData = run?.toolEvents.map((e, i) => ({ name: e.toolName, risk: e.riskScore, i: i + 1 })) || []
+  const riskData = (run?.toolEvents ?? []).map((e, i) => ({ name: e.toolName, risk: e.riskScore, i: i + 1 }))
   const sc = run ? (STATUS_CONFIG[run.status] || STATUS_CONFIG['finished']) : null
 
   return (
     <div className="min-h-screen bg-forge-bg">
-      {/* Topbar */}
       <div className="flex items-center justify-between px-8 py-5 border-b border-forge-border sticky top-0 z-10 bg-forge-bg/90 backdrop-blur-sm">
         <div>
           <h1 className="text-base font-semibold text-forge-white">Sentinel Studio</h1>
           <p className="text-xs text-forge-subtle mt-0.5">Real-time observability and audit trail</p>
         </div>
-        {/* Run picker */}
         <div className="relative">
           <button onClick={() => setShowPicker(p => !p)}
             className="flex items-center gap-2 px-4 py-2 bg-forge-surface border border-forge-border rounded-xl text-sm text-forge-primary hover:border-forge-line transition-colors">
@@ -85,15 +84,13 @@ export function SentinelStudio() {
 
       {run && (
         <div className="px-8 py-6 space-y-5">
-
-          {/* Run header card */}
           <div className="p-5 bg-forge-surface border border-forge-border rounded-2xl">
             <div className="flex items-start gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <h2 className="text-base font-bold text-forge-white">{run.agentName}</h2>
                   {sc && (
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-forge-elevated border border-forge-border`}>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-forge-elevated border border-forge-border">
                       <div className={`w-1.5 h-1.5 rounded-full ${sc.dot} ${run.status === 'running' ? 'animate-pulse' : ''}`} />
                       <span className={`text-[10px] font-semibold ${sc.text}`}>{run.status.replace('_', ' ')}</span>
                     </div>
@@ -105,33 +102,44 @@ export function SentinelStudio() {
                 <p className="text-sm text-forge-secondary leading-relaxed">"{run.input}"</p>
               </div>
               <div className="text-right shrink-0">
-                <div className={`text-3xl font-bold ${run.loopRiskScore > 30 ? 'text-red-500' : run.loopRiskScore > 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                  {run.loopRiskScore}
+                <div className={`text-3xl font-bold ${(run.loopRiskScore ?? 0) > 30 ? 'text-red-500' : (run.loopRiskScore ?? 0) > 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {run.loopRiskScore ?? 0}
                 </div>
                 <div className="text-[10px] text-forge-subtle">loop risk</div>
               </div>
             </div>
 
-            {/* Timeline */}
             <div className="mt-5 pt-5 border-t border-forge-border">
               <div className="text-[10px] font-bold text-forge-subtle uppercase tracking-widest mb-4">Tool Timeline</div>
               <div className="relative">
                 <div className="absolute top-4 left-4 right-4 h-px bg-forge-border" />
                 <div className="flex gap-8 relative overflow-x-auto no-scrollbar pb-2">
-                  {run.toolEvents.map((event, i) => {
+                  {(run.toolEvents ?? []).map((event, i) => {
                     const cfg = D_CONFIG[event.decision]
                     const active = selectedEvent?.id === event.id
+                    const hovered = hoveredEvent === event.id
+
                     return (
-                      <button key={event.id} onClick={() => setSelectedEvent(active ? null : event)}
-                        className="flex flex-col items-center gap-2.5 shrink-0 group">
-                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}
-                          className={`w-8 h-8 rounded-full border-2 border-forge-bg flex items-center justify-center z-10 ring-2 transition-all ${cfg.ring} ${cfg.dot} ${active ? 'scale-125 ring-4' : ''}`}>
+                      <button
+                        key={event.id}
+                        onClick={() => setSelectedEvent(active ? null : event)}
+                        onMouseEnter={() => setHoveredEvent(event.id)}
+                        onMouseLeave={() => setHoveredEvent(null)}
+                        className="flex flex-col items-center gap-2.5 shrink-0 group outline-none">
+                        <div
+                          className={`w-8 h-8 rounded-full border-2 border-forge-bg flex items-center justify-center z-10 transition-all duration-150 ${cfg.dot} ${active
+                              ? `scale-125 ring-4 ${cfg.ring} outline-2 outline-offset-2 outline-white/20`
+                              : hovered
+                                ? `ring-2 ${cfg.ring} scale-110`
+                                : ''
+                            }`}
+                          style={hovered && !active ? { boxShadow: `0 0 0 2px var(--color-forge-bg), 0 0 0 4px currentColor` } : undefined}>
                           <span className="text-[9px] font-bold text-white">{i + 1}</span>
-                        </motion.div>
-                        <code className={`text-[10px] font-mono transition-colors ${active ? cfg.text : 'text-forge-subtle group-hover:text-forge-secondary'}`}>
+                        </div>
+                        <code className={`text-[10px] font-mono transition-colors ${active ? cfg.text : hovered ? cfg.text : 'text-forge-subtle'}`}>
                           {event.toolName}
                         </code>
-                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.text}`}>
+                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border transition-all ${active || hovered ? `${cfg.bg} ${cfg.text} ${cfg.border}` : 'bg-forge-elevated border-forge-border text-forge-subtle'}`}>
                           {cfg.label}
                         </span>
                       </button>
@@ -142,10 +150,7 @@ export function SentinelStudio() {
             </div>
           </div>
 
-          {/* Bottom grid */}
           <div className="grid grid-cols-3 gap-5">
-
-            {/* Event detail */}
             <div className="col-span-2">
               <AnimatePresence mode="wait">
                 {selectedEvent ? (
@@ -164,11 +169,11 @@ export function SentinelStudio() {
                     </div>
                     <div className="p-5 space-y-0">
                       {[
-                        { label: 'Tool',      value: selectedEvent.toolName,  mono: true  },
-                        { label: 'Decision',  value: selectedEvent.decision.replace('_', ' '), mono: false },
-                        { label: 'Risk Score',value: String(selectedEvent.riskScore), mono: false },
+                        { label: 'Tool', value: selectedEvent.toolName, mono: true },
+                        { label: 'Decision', value: selectedEvent.decision.replace('_', ' '), mono: false },
+                        { label: 'Risk Score', value: String(selectedEvent.riskScore), mono: false },
                         { label: 'Timestamp', value: new Date(selectedEvent.timestamp).toLocaleTimeString(), mono: false },
-                        { label: 'Duration',  value: selectedEvent.durationMs ? `${selectedEvent.durationMs}ms` : 'Pending…', mono: false },
+                        { label: 'Duration', value: selectedEvent.durationMs ? `${selectedEvent.durationMs}ms` : 'Pending…', mono: false },
                       ].map(({ label, value, mono }, i) => (
                         <div key={label} className={`flex items-center justify-between py-3 ${i < 4 ? 'border-b border-forge-border/40' : ''}`}>
                           <span className="text-xs text-forge-subtle">{label}</span>
@@ -204,9 +209,7 @@ export function SentinelStudio() {
               </AnimatePresence>
             </div>
 
-            {/* Right sidebar */}
             <div className="space-y-4">
-              {/* Risk graph */}
               <div className="bg-forge-surface border border-forge-border rounded-2xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-3.5 border-b border-forge-border">
                   <Activity size={13} className="text-amber-500" />
@@ -229,7 +232,6 @@ export function SentinelStudio() {
                 </div>
               </div>
 
-              {/* Run stats */}
               <div className="bg-forge-surface border border-forge-border rounded-2xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-3.5 border-b border-forge-border">
                   <Clock size={13} className="text-amber-500" />
@@ -237,11 +239,11 @@ export function SentinelStudio() {
                 </div>
                 <div className="p-4 space-y-2.5">
                   {[
-                    { label: 'Started',  value: timeAgo(run.startedAt) },
-                    { label: 'Events',   value: run.toolEvents.length },
-                    { label: 'Allowed',  value: run.toolEvents.filter(e => e.decision === 'allowed').length,           color: 'text-emerald-500' },
-                    { label: 'Blocked',  value: run.toolEvents.filter(e => e.decision === 'blocked').length,           color: 'text-red-500'     },
-                    { label: 'Approval', value: run.toolEvents.filter(e => e.decision === 'approval_required').length, color: 'text-amber-500'   },
+                    { label: 'Started', value: timeAgo(run.startedAt) },
+                    { label: 'Events',   value: (run.toolEvents ?? []).length },
+                    { label: 'Allowed',  value: (run.toolEvents ?? []).filter(e => e.decision === 'allowed').length,           color: 'text-emerald-500' },
+                    { label: 'Blocked',  value: (run.toolEvents ?? []).filter(e => e.decision === 'blocked').length,           color: 'text-red-500'     },
+                    { label: 'Approval', value: (run.toolEvents ?? []).filter(e => e.decision === 'approval_required').length, color: 'text-amber-500'   },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="flex items-center justify-between">
                       <span className="text-xs text-forge-subtle">{label}</span>

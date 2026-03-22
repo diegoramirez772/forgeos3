@@ -1,4 +1,4 @@
-export type DomainProfile = 'healthtech' | 'agrotech' | 'fintech' | 'custom'
+export type DomainProfile = 'healthtech' | 'agrotech' | 'fintech' | 'health' | 'gov' | 'marketing' | 'custom'
 export type RiskMode = 'normal' | 'safe'
 export type PolicyLevel = 'low' | 'medium' | 'strict'
 export type RuntimeKey = 'openclaw' | 'langgraph' | 'autogen' | 'crewai' | 'custom'
