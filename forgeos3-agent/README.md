@@ -1,15 +1,14 @@
-# ForgeOS3 — Backend
+# ForgeOS3 — Agent Runtime (William)
 
-API central de ForgeOS3. Expone todos los endpoints que consume el frontend y el agente. Contiene el Policy Engine, Tool Gateway, Loop Guard, Audit Layer y Sandbox Layer.
+Capa de ejecución segura de agentes para ForgeOS3. Implementa el ciclo completo de un run: intent → tool planning → policy gate → execution → audit. Compatible con OpenClaw y cualquier runtime futuro mediante un adapter normalizado.
 
 ---
 
 ## Stack
 
 - **Node.js** + **TypeScript**
-- **Express** — servidor HTTP
-- **Supabase** — base de datos (PostgreSQL)
-- **Zod** — validación de payloads
+- **ts-node** — ejecución directa sin compilar
+- **axios** — comunicación con la API de Diego
 - **dotenv** — variables de entorno
 
 ---
@@ -17,30 +16,23 @@ API central de ForgeOS3. Expone todos los endpoints que consume el frontend y el
 ## Estructura
 
 ```
-src/
-├── routes/
-│   ├── agents.ts        # CRUD de agentes
-│   ├── runs.ts          # iniciar/finalizar runs
-│   ├── tools.ts         # evaluate + log tool calls
-│   ├── approvals.ts     # request + resolve approvals
-│   └── registry.ts      # templates, profiles, packs, presets
-├── engine/
-│   ├── policyEngine.ts  # lógica allow/block/approval
-│   ├── toolGateway.ts   # interceptor de tool calls
-│   ├── loopGuard.ts     # detección de loops y risk score
-│   ├── auditLayer.ts    # registro trazable de eventos
-│   └── sandboxLayer.ts  # timeouts, recursos, red, secrets
-├── db/
-│   ├── supabase.ts      # cliente de Supabase
-│   └── seeds.ts         # datos demo (dominios, tools, presets)
-├── types/
-│   ├── agent.ts
-│   ├── run.ts
-│   └── approval.ts
-├── middleware/
-│   ├── auth.ts          # verificación de API key / JWT
-│   └── errorHandler.ts  # manejo global de errores
-└── index.ts             # entry point
+forgeos3-agent/
+├── src/
+│   ├── adapter/
+│   │   └── openclawAdapter.ts   # Toda la comunicación con la API + mock fallback
+│   ├── scenarios/
+│   │   ├── healthScenario.ts    # Escenario A — Health
+│   │   ├── govScenario.ts       # Escenario B — Government
+│   │   ├── marketingScenario.ts # Escenario C — Marketing
+│   │   └── loopScenario.ts      # Escenario D — Loop Guard
+│   ├── tools/
+│   │   ├── healthTools.ts       # summarize, checklist, diagnose, write_record
+│   │   ├── govTools.ts          # classify, route, write_external, publish
+│   │   └── marketingTools.ts    # summarize, draft, publish, schedule
+│   ├── index.ts                 # Entry point — corre los 4 escenarios
+│   └── demo.ts                  # Alias de index.ts
+├── .env
+└── package.json
 ```
 
 ---
@@ -48,114 +40,131 @@ src/
 ## Setup
 
 ```bash
-cd forgeos3-backend
+cd forgeos3/forgeos3-agent
 npm install
-cp .env.example .env    # llenar con tus credenciales
-npm run dev
+cp .env.example .env
 ```
 
-El servidor corre en [http://localhost:3001](http://localhost:3001)
+Llena el `.env`:
 
-Verifica que funciona:
+```env
+VITE_API_URL=https://forgeos3-production.up.railway.app
+FORGEOS3_API_URL=https://forgeos3-production.up.railway.app
+SUPABASE_URL=tu_supabase_url
+SUPABASE_SERVICE_KEY=tu_service_key
+JWT_SECRET=forgeos3_secret_2025
+AGENT_API_KEY=tu_jwt_token
+```
+
+---
+
+## Correr el demo
+
 ```bash
-curl http://localhost:3001/health
-# { "status": "ok", "service": "forgeos3-backend" }
+# Los 4 escenarios en secuencia (recomendado para el pitch)
+npm run demo:all
+
+# Escenarios individuales
+npm run demo:health      # Escenario A
+npm run demo:gov         # Escenario B
+npm run demo:marketing   # Escenario C
+npm run demo:loop        # Escenario D
+```
+
+> **Nota:** Si la API no está disponible, el agente corre automáticamente en modo mock sin cambiar ningún código.
+
+---
+
+## Los 4 Escenarios
+
+### A) Health Agent
+**Input:** `"Summarize patient intake #4821 and create a follow-up checklist"`
+
+| Tool | Decisión | Motivo |
+|------|----------|--------|
+| `summarize` | ✅ allowed | Baja sensibilidad |
+| `checklist` | ✅ allowed | Baja sensibilidad |
+| `diagnose` | ❌ blocked | Sensibilidad crítica + política strict |
+
+---
+
+### B) Government Agent
+**Input:** `"Analyze public request #2291 and route to the right department"`
+
+| Tool | Decisión | Motivo |
+|------|----------|--------|
+| `classify` | ✅ allowed | Baja sensibilidad |
+| `route` | ✅ allowed | Baja sensibilidad |
+| `write_external` | ⏳ approval_required | Escribe en BD municipal |
+
+El run **pausa y espera** aprobación humana. Si se aprueba → continúa. Si se rechaza → status `blocked`.
+
+---
+
+### C) Marketing Agent
+**Input:** `"Generate a campaign workflow and prepare a content draft"`
+
+| Tool | Decisión | Motivo |
+|------|----------|--------|
+| `summarize` | ✅ allowed | Baja sensibilidad |
+| `draft` | ✅ allowed | Baja sensibilidad |
+| `publish` | ⏳ approval_required → ❌ rejected | Publica en canales externos |
+
+El operador **rechaza** la publicación — el run termina en status `blocked`.
+
+---
+
+### D) Loop Guard
+El agente llama `classify` 6 veces seguidas intencionalmente.
+
+- Iteración 1 → score: 6/100 → normal
+- Iteración 2 → score: 18/100 → normal
+- Iteración 3 → score: 36/100 → **SAFE MODE activado**
+- Run termina automáticamente con status `safe_mode`
+
+---
+
+## Flujo del Adapter
+
+```
+startRun()
+    ↓
+beforeToolCall()  →  allowed / blocked / approval_required
+    ↓
+[si allowed]  ejecutar tool
+    ↓
+afterToolCall()   →  loggea resultado
+    ↓
+evaluateLoop()    →  checa risk score acumulado
+    ↓
+[si score > 30]   →  safe_mode automático
+    ↓
+finishRun()       →  finished / blocked / safe_mode
 ```
 
 ---
 
-## Variables de entorno
+## Mock Fallback
 
-```
-PORT=3001
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_KEY=your_service_key
-JWT_SECRET=your_jwt_secret
-```
+El adapter tiene fallback automático. Si la API no responde:
+- `startRun` → genera ID local
+- `beforeToolCall` → bloquea tools peligrosas por nombre (`diagnose`, `deleteAllData`, etc.)
+- `requestApproval` → simula delay y devuelve la decisión configurada
+- `evaluateLoop` → incrementa score localmente
+- `afterToolCall` / `finishRun` → loggea en memoria
 
----
-
-## API — Endpoints
-
-### Registry
-```
-GET  /api/templates
-GET  /api/domain-profiles
-GET  /api/tool-packs
-GET  /api/policy-presets
-GET  /api/runtime-presets
-```
-
-### Agentes
-```
-POST /api/agents
-GET  /api/agents
-GET  /api/agents/:id
-POST /api/agents/:id/deploy
-```
-
-### Runs
-```
-POST /api/runs/start
-POST /api/runs/finish
-GET  /api/runs
-GET  /api/runs/:id
-GET  /api/runs/:id/tools
-```
-
-### Tool Gateway + Policy Engine
-```
-POST /api/tools/evaluate    # recibe tool intent, devuelve allowed/blocked/approval_required
-POST /api/tools/log         # registra el resultado de la ejecución
-```
-
-### Approvals
-```
-POST /api/approvals/request
-POST /api/approvals/resolve
-GET  /api/approvals
-GET  /api/approvals/:id
-```
-
-### Loop Guard
-```
-POST /api/risk/evaluate-loop
-```
-
----
-
-## Base de datos — Tablas principales
-
-| Tabla | Descripción |
-|---|---|
-| `agent_templates` | Templates reutilizables |
-| `domain_profiles` | Health, Gov, Marketing, Custom |
-| `tool_packs` | Colecciones de tools por dominio |
-| `tool_pack_items` | Tools individuales con sensibilidad |
-| `policy_presets` | Permissive, Balanced, Strict |
-| `runtime_presets` | OpenClaw, LangGraph, etc |
-| `created_agents` | Agentes creados con su config |
-| `agent_runs` | Ejecuciones con estado y loop risk score |
-| `tool_events` | Cada tool call con decisión y payload |
-| `approval_requests` | Solicitudes con estado y revisor |
-
----
-
-## Lógica del Policy Engine
-
-Recibe: `{ toolName, domain, policyLevel, sensitivity, riskMode }`
-
-Devuelve:
-- `allowed` — si la tool es de bajo riesgo y la política lo permite
-- `blocked` — si la tool es crítica y la política es strict
-- `approval_required` — si la sensibilidad es alta o la tool lo requiere
+No hay que cambiar nada para pasar de mock a real — el adapter lo detecta solo.
 
 ---
 
 ## Comandos
 
 ```bash
-npm run dev      # desarrollo con hot reload
-npm run build    # compilar TypeScript
-npm run start    # correr el build
+npm run demo:all       # demo completo (pitch)
+npm run demo:health    # solo escenario A
+npm run demo:gov       # solo escenario B
+npm run demo:marketing # solo escenario C
+npm run demo:loop      # solo escenario D
+npm run build          # compilar TypeScript
+npm run dev            # hot reload
 ```
