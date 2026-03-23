@@ -32,9 +32,11 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
   const bottomRef = useRef<HTMLDivElement>(null)
   const color = DOMAIN_COLOR[domain]
 
+  // Fix auto-scroll during streaming
+  const lastMsgContent = messages.length > 0 ? messages[messages.length - 1].content : ''
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages.length, lastMsgContent])
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() }

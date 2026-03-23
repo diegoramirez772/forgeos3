@@ -100,13 +100,18 @@ approvalsRouter.post('/request', async (req, res) => {
 
 // ── POST /api/approvals/:id/resolve ───────────────────────────
 const ResolveSchema = z.object({
-  status:     z.enum(['approved', 'rejected']),
-  reviewedBy: z.string().email(),
-})
+  // Accept both 'status' (agent) and 'decision' (UI) for the same field
+  status:     z.enum(['approved', 'rejected']).optional(),
+  decision:   z.enum(['approved', 'rejected']).optional(),
+  reviewedBy: z.string().optional(),
+}).refine(d => d.status || d.decision, { message: 'Either status or decision is required' })
 
 approvalsRouter.post('/:id/resolve', async (req, res) => {
   const parsed = ResolveSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+  const resolvedStatus = (parsed.data.status ?? parsed.data.decision) as 'approved' | 'rejected'
+  const reviewedBy = parsed.data.reviewedBy ?? 'system'
 
   // Validate approval exists and is still pending
   const { data: existing } = await supabase
@@ -118,12 +123,10 @@ approvalsRouter.post('/:id/resolve', async (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Approval not found' })
   if (existing.status !== 'pending') return res.status(400).json({ error: `Approval is already ${existing.status}` })
 
-  const { status, reviewedBy } = parsed.data
-
   const { data, error } = await supabase
     .from('approval_requests')
     .update({
-      status,
+      status:      resolvedStatus,
       reviewed_by: reviewedBy,
       reviewed_at: new Date().toISOString(),
     })
@@ -136,13 +139,13 @@ approvalsRouter.post('/:id/resolve', async (req, res) => {
   // Update run status back to running if approved, blocked if rejected
   await supabase
     .from('agent_runs')
-    .update({ status: status === 'approved' ? 'running' : 'blocked' })
+    .update({ status: resolvedStatus === 'approved' ? 'running' : 'blocked' })
     .eq('id', existing.run_id)
 
   await logAuditEvent({
     type:  'approval_resolved',
     runId: existing.run_id,
-    data:  { approvalId: req.params.id, status, reviewedBy },
+    data:  { approvalId: req.params.id, status: resolvedStatus, reviewedBy },
   })
 
   res.json(data)

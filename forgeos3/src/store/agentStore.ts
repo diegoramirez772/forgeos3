@@ -7,6 +7,12 @@ interface AgentState {
   selectedAgent: Agent | null
   loading: boolean
   error: string | null
+  
+  // Real-time agent server status
+  isLive: boolean
+  lastSeen: Date | null
+  checkHealth: () => Promise<void>
+  
   fetchAgents: () => Promise<void>
   createAgent: (payload: Omit<Agent, 'id' | 'createdAt'>) => Promise<void>
   setSelectedAgent: (agent: Agent | null) => void
@@ -19,6 +25,27 @@ export const useAgentStore = create<AgentState>((set) => ({
   selectedAgent: null,
   loading: false,
   error: null,
+
+  isLive: false,
+  lastSeen: null,
+
+  checkHealth: async () => {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 2000)
+      const agentUrl = import.meta.env.VITE_AGENT_URL || 'http://localhost:4000'
+      const res = await fetch(`${agentUrl}/api/health`, { signal: controller.signal })
+      clearTimeout(timeoutId)
+      
+      if (res.ok) {
+        set({ isLive: true, lastSeen: new Date() })
+      } else {
+        set({ isLive: false })
+      }
+    } catch {
+      set({ isLive: false })
+    }
+  },
 
   fetchAgents: async () => {
     set({ loading: true, error: null })

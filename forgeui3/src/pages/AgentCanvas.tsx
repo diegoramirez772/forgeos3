@@ -2,11 +2,13 @@ import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, RotateCcw, Shield } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import { GovernanceBar } from '../components/GovernanceBar'
 import { AgentChat }     from '../components/AgentChat'
 import { HealthCanvas }  from '../canvases/HealthCanvas'
 import { AgroCanvas }    from '../canvases/AgroCanvas'
 import { FinCanvas }     from '../canvases/FinCanvas'
+import { ApprovalWidget } from '../components/ApprovalWidget'
 import { useAgentStore } from '../store/agentStore'
 import { runAgent }      from '../lib/agentClient'
 import { AGENTS, type Domain, type GovernanceEvent } from '../types'
@@ -53,9 +55,23 @@ export function AgentCanvas() {
           reason: evt.reason,
           ts: Date.now(),
         })
+        if (evt.decision === 'approval_required') {
+          toast.loading(`Approval required for ${evt.toolName}...`, { id: evt.toolName })
+        } else if (evt.decision === 'allowed') {
+          toast.success(`${evt.toolName} allowed`, { id: evt.toolName, duration: 2000 })
+        } else if (evt.decision === 'blocked') {
+          toast.error(`${evt.toolName} blocked by policy`, { id: evt.toolName, duration: 3000 })
+        }
       },
-      onDone:  (output) => { updateLast(output); setRunning(false) },
-      onError: (err)    => { updateLast(`Error: ${err}`); setRunning(false) },
+      onDone:  (output) => { 
+        updateLast(output); 
+        setRunning(false) 
+        toast.dismiss()
+      },
+      onError: (err)    => { 
+        toast.error(`Error: ${err}`); 
+        setRunning(false) 
+      },
     })
   }, [input, running, agent, messages, addMessage, updateLast, addGovEvent, setRunning])
 
@@ -134,7 +150,7 @@ export function AgentCanvas() {
         </div>
 
         {/* Chat */}
-        <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
           <AgentChat
             domain={agent.domain as Domain}
             messages={messages}
@@ -143,6 +159,7 @@ export function AgentCanvas() {
             onInput={setInput}
             onSend={handleSend}
           />
+          <ApprovalWidget domain={agent.domain as Domain} />
         </div>
 
         {/* Right panel - governance events */}

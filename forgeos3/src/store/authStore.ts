@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import api from '../lib/api'
+import { supabase } from '../lib/supabase'
 
 interface User {
   id: string
@@ -29,11 +29,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email: string, password: string) => {
     set({ loading: true, error: null })
     try {
-      const { data } = await api.post<{ token: string; user: User }>('/api/auth/login', { email, password })
-      localStorage.setItem('forgeos3_token', data.token)
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Invalid credentials'
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      if (!data.user || !data.session) throw new Error('Invalid login response')
+      
+      const token = data.session.access_token
+      const userObj = {
+        id: data.user.id,
+        email: data.user.email || '',
+        name: data.user.user_metadata?.name || '',
+      }
+
+      localStorage.setItem('forgeos3_token', token)
+      set({ user: userObj, token, isAuthenticated: true, loading: false })
+    } catch (err: any) {
+      const message = err.message || 'Invalid credentials'
       set({ error: message, loading: false })
       throw err
     }
@@ -42,17 +52,35 @@ export const useAuthStore = create<AuthState>((set) => ({
   signup: async (name: string, email: string, password: string) => {
     set({ loading: true, error: null })
     try {
-      const { data } = await api.post<{ token: string; user: User }>('/api/auth/signup', { name, email, password })
-      localStorage.setItem('forgeos3_token', data.token)
-      set({ user: data.user, token: data.token, isAuthenticated: true, loading: false })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong'
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } }
+      })
+      if (error) throw error
+
+      if (!data.user || !data.session) {
+        throw new Error('Please check your email to confirm registration.')
+      }
+
+      const token = data.session.access_token
+      const userObj = {
+        id: data.user.id,
+        email: data.user.email || '',
+        name: data.user.user_metadata?.name || '',
+      }
+
+      localStorage.setItem('forgeos3_token', token)
+      set({ user: userObj, token, isAuthenticated: true, loading: false })
+    } catch (err: any) {
+      const message = err.message || 'Something went wrong'
       set({ error: message, loading: false })
       throw err
     }
   },
 
-  logout: () => {
+  logout: async () => {
+    await supabase.auth.signOut()
     localStorage.removeItem('forgeos3_token')
     set({ user: null, token: null, isAuthenticated: false, error: null })
   },

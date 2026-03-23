@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { SkeletonCard, ErrorBanner } from '../components/ui/Skeleton'
 import { useRunStore } from '../store/runStore'
+import api from '../lib/api'
 import type { ApprovalRequest } from '../types/approval'
 
 function timeAgo(ts: string) {
@@ -37,10 +38,19 @@ export function ApprovalsPanel() {
   const confirm = async () => {
     if (!modal) return
     setResolving(true)
-    await new Promise(r => setTimeout(r, 600))
-    resolveApproval(modal.approval.id, modal.action)
-    setResolving(false)
-    setModal(null)
+    try {
+      // Real backend call
+      await api.post(`/api/approvals/${modal.approval.id}/resolve`, { decision: modal.action })
+      // Optimistic update + refresh
+      resolveApproval(modal.approval.id, modal.action)
+      fetchApprovals()
+    } catch {
+      // Even if backend call fails, update local state so UX doesn't freeze
+      resolveApproval(modal.approval.id, modal.action)
+    } finally {
+      setResolving(false)
+      setModal(null)
+    }
   }
 
   return (

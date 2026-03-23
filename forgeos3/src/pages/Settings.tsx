@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Zap, Copy, RefreshCw, Check, Shield, Key, Building2, ChevronRight, AlertTriangle } from 'lucide-react'
+import { Zap, Copy, RefreshCw, Check, Shield, Key, Building2, ChevronRight, AlertTriangle, Loader } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import api from '../lib/api'
 
 const RUNTIMES = [
   { name: 'OpenClaw', key: 'openclaw_v1', live: true, desc: 'Primary MVP adapter · full integration' },
@@ -23,10 +24,22 @@ export function Settings() {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshed, setRefreshed] = useState(false)
   const [showConfirmRotate, setShowConfirmRotate] = useState(false)
-  const [apiKey, setApiKey] = useState('fos3_sk_live_xxxxxxxxxxxxxxxxxxxxxxxx')
+  const [apiKey, setApiKey] = useState<string | null>(null)
+  const [keyLoading, setKeyLoading] = useState(false)
   const { user } = useAuthStore()
 
+  // Load real API key from backend when 'api' section is opened
+  useEffect(() => {
+    if (section !== 'api' || apiKey) return
+    setKeyLoading(true)
+    api.get<{ key: string }>('/api/workspace/api-key')
+      .then(r => setApiKey(r.data.key))
+      .catch(() => setApiKey('(unable to load — check backend)'))
+      .finally(() => setKeyLoading(false))
+  }, [section, apiKey])
+
   const copy = () => {
+    if (!apiKey) return
     navigator.clipboard.writeText(apiKey)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -36,14 +49,15 @@ export function Settings() {
     if (showConfirmRotate) {
       setRefreshing(true)
       setShowConfirmRotate(false)
-      setTimeout(() => {
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-        const randomKey = Array.from({ length: 24 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-        setApiKey(`fos3_sk_live_${randomKey}`)
-        setRefreshing(false)
-        setRefreshed(true)
-        setTimeout(() => setRefreshed(false), 3000)
-      }, 1200)
+      // Trigger a re-fetch after rotation
+      api.post<{ key: string }>('/api/workspace/rotate-key')
+        .then(r => {
+          setApiKey(r.data.key)
+          setRefreshed(true)
+          setTimeout(() => setRefreshed(false), 3000)
+        })
+        .catch(() => setApiKey('(rotation failed — check backend)'))
+        .finally(() => setRefreshing(false))
     } else {
       setShowConfirmRotate(true)
       setTimeout(() => setShowConfirmRotate(false), 5000)
@@ -144,7 +158,10 @@ export function Settings() {
                         <label className="text-[10px] font-bold text-forge-subtle uppercase tracking-widest mb-2 block">Secret Key</label>
                         <div className="flex gap-2">
                           <div className="flex-1 flex items-center px-4 py-2.5 bg-forge-elevated border border-forge-border rounded-xl font-mono text-xs text-forge-secondary overflow-hidden">
-                            <span className="truncate">{apiKey}</span>
+                            {keyLoading
+                              ? <Loader size={12} className="animate-spin text-forge-subtle" />
+                              : <span className="truncate">{apiKey ?? '—'}</span>
+                            }
                           </div>
                           <button onClick={copy}
                             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${copied ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-forge-elevated border-forge-border text-forge-secondary hover:text-forge-primary hover:border-forge-line'}`}>
@@ -164,10 +181,8 @@ export function Settings() {
                       </div>
                       <div className="grid grid-cols-2 gap-3 pt-2 border-t border-forge-border">
                         {[
-                          { label: 'Created', value: 'Mar 14, 2025' },
-                          { label: 'Last used', value: 'Just now' },
-                          { label: 'Requests', value: '247 today' },
-                          { label: 'Rate limit', value: '1000 / hr' },
+                          { label: 'Created', value: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
+                          { label: 'Status', value: apiKey ? 'Active' : 'Not provisioned' },
                         ].map(({ label, value }) => (
                           <div key={label} className="p-3 bg-forge-elevated/50 rounded-xl">
                             <div className="text-[10px] text-forge-subtle mb-0.5">{label}</div>
@@ -201,11 +216,11 @@ export function Settings() {
                     </div>
                     <div className="space-y-0 border border-forge-border rounded-2xl overflow-hidden">
                       {[
-                        { label: 'Workspace', value: 'ForgeOS3 Dev' },
-                        { label: 'Plan', value: 'Hackathon MVP' },
+                        { label: 'Workspace', value: (user?.name?.split(' ')[0] ?? 'ForgeOS3') + ' Workspace' },
+                        { label: 'Plan', value: user?.email?.includes('admin') ? 'Admin Tier' : 'Standard Tier' },
                         { label: 'Runtime', value: 'OpenClaw v1' },
-                        { label: 'Region', value: 'Durango, MX' },
-                        { label: 'Created', value: 'Mar 14, 2025' },
+                        { label: 'Region', value: 'Global (Supabase)' },
+                        { label: 'Member since', value: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) },
                       ].map(({ label, value }, i) => (
                         <div key={label} className={`flex justify-between items-center px-5 py-3.5 ${i < 4 ? 'border-b border-forge-border/50' : ''} ${i % 2 === 1 ? 'bg-forge-elevated/20' : ''}`}>
                           <span className="text-xs text-forge-subtle">{label}</span>

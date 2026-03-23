@@ -15,6 +15,7 @@ import { authRouter      } from './routes/auth'
 import { sandboxRouter   } from './routes/sandbox'
 import { dashboardRouter } from './routes/dashboard'
 import { auditRouter     } from './routes/audit'
+import { workspaceRouter } from './routes/workspace'
 import { errorHandler    } from './middleware/errorHandler'
 import { authMiddleware  } from './middleware/auth'
 import { sanitizeInput   } from './middleware/sanitize'
@@ -102,6 +103,7 @@ app.use('/api/approvals', authMiddleware, approvalsRouter)
 app.use('/api/sandbox',   authMiddleware, sandboxRouter)
 app.use('/api/dashboard', authMiddleware, dashboardRouter)
 app.use('/api/audit',     authMiddleware, auditRouter)
+app.use('/api/workspace', authMiddleware, workspaceRouter)
 
 // ── 404 handler ──────────────────────────────────────────────
 app.use((_req, res) => {

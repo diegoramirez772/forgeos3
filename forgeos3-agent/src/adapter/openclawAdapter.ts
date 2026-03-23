@@ -1,8 +1,14 @@
 import axios from "axios"
 import "dotenv/config"
+import { createClient } from "@supabase/supabase-js"
 
 const API_URL = process.env.VITE_API_URL || process.env.FORGEOS3_API_URL || "https://forgeos3-production.up.railway.app"
 const API_KEY  = process.env.AGENT_API_KEY || ""
+
+export const supabase = createClient(
+  process.env.SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_KEY || ""
+)
 
 // ─── COLORES ────────────────────────────────────────────────────────────────
 export const c = {
@@ -22,23 +28,11 @@ export function logSection(title: string) {
   console.log(`${c.magenta}${"═".repeat(58)}${c.reset}\n`)
 }
 
-// ─── MOCK STATE ──────────────────────────────────────────────────────────────
-const mockDB = {
-  runs:      new Map<string, any>(),
-  toolLog:   [] as any[],
-  loopScore: new Map<string, number>(),
-  approvals: new Map<string, { status: string }>(),
-  // Tools bloqueadas por política
-  blocked:   new Set(["diagnose", "deleteAllData", "overrideBudget"]),
-  // Tools que requieren approval
-  needsApproval: new Set(["write_external", "publish"]),
-}
-
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }
-
 function headers() {
   return API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}
 }
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 // ─── START RUN ───────────────────────────────────────────────────────────────
 export async function startRun(agent: string, input: string): Promise<{ id: string }> {
@@ -50,12 +44,9 @@ export async function startRun(agent: string, input: string): Promise<{ id: stri
     log("🚀", `Starting run: ${agent}`, c.cyan)
     log("🟢", `Run registered in DB → id: ${res.data.id}`, c.green)
     return { id: res.data.id }
-  } catch {
-    const id = `mock-${agent}-${Date.now()}`
-    mockDB.runs.set(id, { id, agent, input, status: "running", startedAt: new Date().toISOString() })
-    log("🚀", `Starting run: ${agent}`, c.cyan)
-    log("🟡", `Run registered (mock) → id: ${id}`, c.yellow)
-    return { id }
+  } catch (err) {
+    log("🛑", `Failed to start run with ForgeOS3: ${err}`, c.red)
+    throw new Error('ForgeOS3 API unavailable - startRun failed')
   }
 }
 
@@ -77,21 +68,9 @@ export async function beforeToolCall(
     const ms = Date.now() - start
     printToolDecision(toolName, decision, res.data.reason, ms, "real")
     return decision as any
-  } catch {
-    const ms = Date.now() - start
-    let decision: "allowed" | "blocked" | "approval_required" = "allowed"
-    let reason = "policy: allowed by default"
-
-    if (mockDB.blocked.has(toolName)) {
-      decision = "blocked"
-      reason   = `policy: strict · ${domain} domain`
-    } else if (mockDB.needsApproval.has(toolName)) {
-      decision = "approval_required"
-      reason   = "write action detected — human approval required"
-    }
-
-    printToolDecision(toolName, decision, reason, ms, "mock")
-    return decision
+  } catch (err) {
+    log("🛑", `Failed to evaluate tool: ${err}`, c.red)
+    throw new Error('ForgeOS3 API unavailable - beforeToolCall failed')
   }
 }
 
@@ -108,9 +87,9 @@ export async function afterToolCall(
       { timeout: 4000, headers: headers() }
     )
     log("📝", `Tool result logged (real) — ${toolName} (${durationMs}ms)`, c.dim as any)
-  } catch {
-    mockDB.toolLog.push({ runId, toolName, output, durationMs, ts: new Date().toISOString() })
-    log("📝", `Tool result logged (mock) — ${toolName} (${durationMs}ms)`, c.dim as any)
+  } catch (err) {
+    log("🛑", `Failed to log tool: ${err}`, c.red)
+    throw new Error('ForgeOS3 API unavailable - afterToolCall failed')
   }
 }
 
@@ -119,22 +98,28 @@ export async function requestApproval(
   runId: string,
   toolName: string,
   reason: string,
-  mockDecision: "approved" | "rejected" = "approved"
+  meta: { agentId: string; agentName: string; domain: string; payload?: Record<string, unknown> } = { agentId: '', agentName: 'agent', domain: 'custom' }
 ): Promise<boolean> {
   log("⏳", `Approval required for "${toolName}"`, c.yellow)
   console.log(`${c.dim}   Reason: ${reason}${c.reset}`)
 
   try {
-    // 1. Crear approval request
     const createRes = await axios.post(`${API_URL}/api/approvals/request`,
-      { runId, toolName, reason },
+      {
+        runId,
+        toolName,
+        reason,
+        agentId:   meta.agentId,
+        agentName: meta.agentName,
+        domain:    meta.domain,
+        payload:   meta.payload ?? {},
+      },
       { timeout: 4000, headers: headers() }
     )
     const approvalId = createRes.data.id
     log("⏳", `Waiting for operator decision... (id: ${approvalId})`, c.yellow)
 
-    // 2. Polling cada 3 segundos (max 10 intentos)
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       await sleep(3000)
       const res = await axios.get(`${API_URL}/api/approvals/${approvalId}`,
         { timeout: 4000, headers: headers() }
@@ -147,21 +132,14 @@ export async function requestApproval(
         log("❌", `Approval REJECTED for "${toolName}" — run will be blocked`, c.red)
         return false
       }
-      log("⏳", `Still waiting... (attempt ${i + 1}/10)`, c.dim as any)
+      log("⏳", `Still waiting... (attempt ${i + 1}/20)`, c.dim as any)
     }
     log("⚠️", `Approval timeout — defaulting to DENY (safe mode)`, c.red)
     return false
 
-  } catch {
-    // Mock: simula delay de aprobación humana
-    await sleep(1500)
-    if (mockDecision === "approved") {
-      log("✅", `Approval GRANTED by operator (mock) — continuing run`, c.green)
-      return true
-    } else {
-      log("❌", `Approval REJECTED by operator (mock) — run will be blocked`, c.red)
-      return false
-    }
+  } catch (err) {
+    log("🛑", `Approval failed entirely: ${err}`, c.red)
+    return false
   }
 }
 
@@ -175,16 +153,9 @@ export async function evaluateLoop(runId: string): Promise<{ score: number; acti
     const { score, recommendation } = res.data
     printLoopScore(score, recommendation, "real")
     return { score, action: recommendation }
-  } catch {
-    // Mock: incrementar score acumulado por run
-    const prev   = mockDB.loopScore.get(runId) || 0
-    const events = mockDB.toolLog.filter(e => e.runId === runId)
-    const score  = Math.min(prev + events.length * 6, 100)
-    mockDB.loopScore.set(runId, score)
-
-    const action = score >= 50 ? "kill" : score >= 30 ? "safe_mode" : "normal"
-    printLoopScore(score, action, "mock")
-    return { score, action }
+  } catch (err) {
+    log("🛑", `Loop evaluation failed securely: ${err}`, c.red)
+    throw new Error('ForgeOS3 API unavailable - evaluateLoop failed')
   }
 }
 
@@ -200,17 +171,15 @@ export async function finishRun(
       { timeout: 4000, headers: headers() }
     )
     printRunFinished(runId, status, "real")
-  } catch {
-    const run = mockDB.runs.get(runId)
-    if (run) run.status = status
-    printRunFinished(runId, status, "mock")
+  } catch (err) {
+    log("🛑", `Finish run fallback failed securely: ${err}`, c.red)
   }
 }
 
 // ─── HELPERS VISUALES ────────────────────────────────────────────────────────
 function inferDomain(agent: string): string {
   if (agent.includes("health")) return "healthtech"
-  if (agent.includes("gov"))    return "agrotech"   // ajustar cuando Diego confirme
+  if (agent.includes("gov"))    return "agrotech"   // Maps GovTech to AgroTech domain in DB
   if (agent.includes("market")) return "fintech"
   return "custom"
 }

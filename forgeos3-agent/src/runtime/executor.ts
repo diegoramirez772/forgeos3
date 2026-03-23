@@ -1,72 +1,164 @@
-import { analyzeIntent } from "./intentAnalysis"
-import { planTool } from "./toolPlanner"
-import { policyGate } from "./policyGate"
-import { tools } from "./toolRegistry"
-import { openclawAdapter } from "../adapter/openclawAdapter"
+import Anthropic from "@anthropic-ai/sdk"
+import { TOOLS, TOOL_HANDLERS } from "../tools/registry"
+import { 
+  startRun, 
+  beforeToolCall, 
+  afterToolCall, 
+  requestApproval, 
+  finishRun, 
+  log 
+} from "../adapter/openclawAdapter"
 
-export async function execute(input: string) {
+interface ExecuteOptions {
+  agentId: string
+  agentName: string
+  domain: string
+  input: string
+  onToken: (text: string) => void
+  onGovEvent: (event: any) => void
+}
 
-  console.log("=== ForgeOS Runtime ===")
-  console.log("Input:", input)
+export class AgentExecutor {
+  private anthropic: Anthropic
 
-  // 1. Iniciar el run en la API de Diego
-  const { runId } = await openclawAdapter.startRun({
-    agentId: 'forgeos3-agent',
-    input,
-  })
-  console.log("Run iniciado, runId:", runId)
-
-  // 2. Detectar intención y seleccionar herramienta
-  const intentResult = analyzeIntent(input)
-  console.log("Intent:", intentResult)
-
-  const toolName = planTool(intentResult.intent)
-  console.log("Tool:", toolName)
-
-  // 3. Verificar política local
-  const allowed = policyGate(toolName)
-  if (!allowed) {
-    console.log("Resultado final: Tool bloqueada por policy")
-    await openclawAdapter.finishRun({ runId, status: 'blocked' })
-    return
+  constructor() {
+    this.anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    })
   }
 
-  // 4. Pedir permiso a la API antes de ejecutar la tool
-  const decision = await openclawAdapter.beforeToolCall({
-    runId,
-    toolName,
-    input: { userInput: input },
-  })
-  console.log("Decisión de la API:", decision)
+  async execute(options: ExecuteOptions) {
+    const { agentId, agentName, domain, input, onToken, onGovEvent } = options
+    let runId: string | null = null
+    let messages: any[] = [{ role: "user", content: input }]
+    let loopCount = 0
+    const maxLoops = 5
 
-  if (decision.decision !== 'allowed') {
-    console.log("Resultado final: Tool bloqueada por API:", decision.reason)
-    await openclawAdapter.finishRun({ runId, status: 'blocked', output: decision.reason })
-    return
+    try {
+      const run = await startRun(agentId, input)
+      runId = run.id
+
+      while (loopCount < maxLoops) {
+        loopCount++
+        
+        const response = await this.anthropic.messages.create({
+          model: "claude-3-5-sonnet-20241022",
+          max_tokens: 1024,
+          system: this.getSystemPrompt(domain),
+          messages,
+          tools: TOOLS[domain] as any,
+          stream: true,
+        })
+
+        let fullText = ""
+        let toolCalls: any[] = []
+
+        for await (const chunk of response) {
+          if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+            const text = chunk.delta.text
+            fullText += text
+            onToken(text)
+          }
+          if (chunk.type === "content_block_start" && chunk.content_block.type === "tool_use") {
+            toolCalls.push({ 
+              id: chunk.content_block.id, 
+              name: chunk.content_block.name, 
+              input: {} 
+            })
+          }
+          if (chunk.type === "content_block_delta" && chunk.delta.type === "input_json_delta") {
+            const lastCall = toolCalls[toolCalls.length - 1]
+            lastCall.partialInput = (lastCall.partialInput || "") + chunk.delta.partial_json
+          }
+        }
+
+        // Finalize tool call inputs
+        toolCalls = toolCalls.map(tc => ({
+          ...tc,
+          input: JSON.parse(tc.partialInput || "{}")
+        }))
+
+        // If no tool calls, we are done
+        if (toolCalls.length === 0) {
+          await finishRun(runId, "finished", fullText)
+          break
+        }
+
+        // Handle tool calls with Governance
+        const toolResults: any[] = []
+        messages.push({ role: "assistant", content: [{ type: "text", text: fullText || "Using tools..." }, ...toolCalls.map(tc => ({ type: "tool_use", id: tc.id, name: tc.name, input: tc.input }))] })
+
+        for (const tc of toolCalls) {
+          const start = Date.now()
+          log("🛠️", `Agent wants to use "${tc.name}"`, "#f59e0b" as any)
+          
+          // 1. Governance PRERUN
+          const decision = await beforeToolCall(runId!, tc.name, domain, tc.input)
+          onGovEvent({ toolName: tc.name, decision, reason: "Evaluated by ForgeOS3 Executor" })
+
+          let toolOutput: any = null
+
+          if (decision === "allowed") {
+            toolOutput = await this.runTool(tc.name, tc.input)
+            await afterToolCall(runId!, tc.name, { status: "success", result: toolOutput }, Date.now() - start)
+          } 
+          else if (decision === "approval_required") {
+            onToken(`\n\n⏳ Tool "${tc.name}" requires administrator approval...`)
+            const approved = await requestApproval(runId!, tc.name, `Human approval required for ${tc.name}`, {
+              agentId, agentName, domain, payload: tc.input
+            })
+
+            if (approved) {
+              onToken(`\n✅ Approved. Executing...`)
+              toolOutput = await this.runTool(tc.name, tc.input)
+              await afterToolCall(runId!, tc.name, { status: "approved_and_executed", result: toolOutput }, Date.now() - start)
+            } else {
+              onToken(`\n❌ Blocked by administrator.`)
+              toolOutput = { error: "Action blocked by human operator." }
+              await afterToolCall(runId!, tc.name, { status: "rejected", result: toolOutput }, Date.now() - start)
+            }
+          }
+          else {
+            onToken(`\n🚫 Blocked by policy engine.`)
+            toolOutput = { error: "Action blocked by automated policy." }
+            await afterToolCall(runId!, tc.name, { status: "blocked", result: toolOutput }, Date.now() - start)
+          }
+
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: tc.id,
+            content: JSON.stringify(toolOutput)
+          })
+        }
+
+        messages.push({ role: "user", content: toolResults })
+        // Continue loop to process tool output
+      }
+
+    } catch (err: any) {
+      log("🛑", `Executor Error: ${err.message}`, "#ef4444" as any)
+      if (runId) await finishRun(runId, "blocked", err.message).catch(() => {})
+      throw err
+    }
   }
 
-  // 5. Ejecutar la herramienta
-  const tool = tools[toolName]
-  if (!tool) {
-    console.log("Resultado final: Tool no encontrada")
-    await openclawAdapter.finishRun({ runId, status: 'blocked', output: 'Tool no encontrada' })
-    return
+  private async runTool(name: string, input: any) {
+    const handler = TOOL_HANDLERS[name]
+    if (!handler) return { error: `Tool ${name} not found in registry.` }
+    try {
+      return await handler(input)
+    } catch (err: any) {
+      return { error: err.message }
+    }
   }
 
-  const startTime = Date.now()
-  const result = await tool.run()
-  const durationMs = Date.now() - startTime
-
-  // 6. Registrar resultado de la tool
-  await openclawAdapter.afterToolCall({
-    runId,
-    toolName,
-    output: { result },
-    durationMs,
-  })
-
-  // 7. Finalizar el run
-  await openclawAdapter.finishRun({ runId, status: 'finished', output: String(result) })
-
-  console.log("Resultado final:", result)
+  private getSystemPrompt(domain: string): string {
+    const base = "You are a professional AI assistant governed by ForgeOS3. You have access to specialized tools."
+    const domainPrompts: Record<string, string> = {
+      healthtech: "Focus on clinical accuracy and patient privacy.",
+      agrotech: "Focus on sensor data and agronomic recommendations.",
+      fintech: "Focus on fraud detection and transaction compliance."
+    }
+    return `${base} ${domainPrompts[domain] || ""}`
+  }
 }

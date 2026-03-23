@@ -56,14 +56,17 @@ const fadeUp = {
 export function Dashboard() {
   const { user } = useAuthStore()
   const { runs, approvals, loading: loadingRuns, error: errorRuns, fetchRuns, fetchApprovals } = useRunStore()
-  const { agents, loading: loadingAgents, error: errorAgents, fetchAgents } = useAgentStore()
+  const { agents, loading: loadingAgents, error: errorAgents, fetchAgents, isLive, checkHealth } = useAgentStore()
   const navigate = useNavigate()
 
   useEffect(() => {
     fetchRuns()
     fetchApprovals()
     fetchAgents()
-  }, [fetchRuns, fetchApprovals, fetchAgents])
+    checkHealth()
+    const iv = setInterval(checkHealth, 5000)
+    return () => clearInterval(iv)
+  }, [fetchRuns, fetchApprovals, fetchAgents, checkHealth])
 
   const pending   = (approvals ?? []).filter(a => a.status === 'pending').length
   const blocked   = runs.flatMap(r => (r.toolEvents ?? [])).filter(e => e?.decision === 'blocked').length
@@ -85,7 +88,13 @@ export function Dashboard() {
           <h1 className="text-base font-semibold text-forge-white">
             {greeting}, <span className="text-amber-500">{user?.name?.split(' ')[0] || 'there'}</span>
           </h1>
-          <p className="text-xs text-forge-subtle mt-0.5">ForgeOS3 Console · OpenClaw runtime active</p>
+          <p className="text-xs text-forge-subtle mt-0.5">
+            ForgeOS3 Console
+            {' · '}
+            <span className={isLive ? 'text-emerald-500' : 'text-red-400'}>
+              {isLive ? 'OpenClaw ● live' : 'OpenClaw ● offline'}
+            </span>
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {pending > 0 && (
@@ -352,8 +361,10 @@ export function Dashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[9px] text-emerald-500 font-semibold uppercase tracking-wide">live</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                        <span className={`text-[9px] font-semibold uppercase tracking-wide ${isLive ? 'text-emerald-500' : 'text-red-400'}`}>
+                          {isLive ? 'live' : 'offline'}
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-[10px] text-forge-subtle">

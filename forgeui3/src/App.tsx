@@ -26,17 +26,22 @@ function Protected({ children }: { children: React.ReactNode }) {
   return authed ? <>{children}</> : <Navigate to="/signin" replace />
 }
 
+import { Toaster } from 'react-hot-toast'
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/"               element={<Landing />}    />
-        <Route path="/signin"         element={<SignIn />}     />
-        <Route path="/signup"         element={<SignUp />}     />
-        <Route path="/gallery"        element={<Protected><Gallery /></Protected>}     />
-        <Route path="/canvas/:domain" element={<Protected><AgentCanvas /></Protected>} />
-        <Route path="*"               element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <Toaster position="top-center" toastOptions={{ style: { background: 'var(--color-surface)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' } }} />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/"               element={<Landing />}    />
+          <Route path="/signin"         element={<SignIn />}     />
+          <Route path="/signup"         element={<SignUp />}     />
+          <Route path="/gallery"        element={<Protected><Gallery /></Protected>}     />
+          <Route path="/canvas/:domain" element={<Protected><AgentCanvas /></Protected>} />
+          <Route path="*"               element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   )
 }

@@ -21,7 +21,12 @@ export function SignIn() {
       if (err) throw err
       navigate('/gallery')
     } catch (err: unknown) {
-      setError(err instanceof Error ? 'Invalid email or password' : 'Something went wrong')
+      console.error(err)
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Something went wrong')
+      }
     } finally { setLoading(false) }
   }
 
