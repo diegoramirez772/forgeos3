@@ -3,7 +3,10 @@ import { MapWidget } from '../components/MapWidget'
 import { useAgentStore } from '../store/agentStore'
 import { t } from '../lib/translations'
 
-interface Props { onExampleClick: (ex: string) => void }
+interface Props { 
+  onExampleClick: (ex: string) => void;
+  isFullscreen?: boolean;
+}
 
 const DURANGO_AGRO_CENTER: [number, number] = [24.0277, -104.6532]
 const AFFECTED_POLYGON: [number, number][] = [
@@ -20,7 +23,7 @@ const EXAMPLES = [
   'Comparar campo #08 vs mes pasado',
 ]
 
-export function AgroCanvas({ onExampleClick }: Props) {
+export function AgroCanvas({ onExampleClick, isFullscreen }: Props) {
   const { lang } = useAgentStore()
   return (
     <div className="p-6 space-y-8 bg-transparent">
@@ -30,9 +33,9 @@ export function AgroCanvas({ onExampleClick }: Props) {
         </h3>
         <MapWidget 
           center={DURANGO_AGRO_CENTER} 
-          zoom={14} 
+          zoom={isFullscreen ? 15 : 14} 
           polygons={[AFFECTED_POLYGON]}
-          height="240px"
+          height={isFullscreen ? "500px" : "240px"}
           points={[{ lat: DURANGO_AGRO_CENTER[0], lng: DURANGO_AGRO_CENTER[1], label: 'Sector Norte - Monitoreo' }]}
         />
         <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
@@ -51,7 +54,7 @@ export function AgroCanvas({ onExampleClick }: Props) {
         <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4 flex items-center gap-2">
           <Database size={10} /> {t(lang, 'active_sensors')}
         </h3>
-        <div className="grid gap-2">
+        <div className={isFullscreen ? "grid grid-cols-2 gap-4" : "grid gap-2"}>
           {EXAMPLES.map((ex) => (
             <button key={ex} onClick={() => onExampleClick(ex)}
               className="text-left p-3 rounded-xl border border-white/5 bg-transparent hover:bg-white/[0.03] hover:border-white/10 transition-all text-[11px] text-white/50 leading-relaxed font-medium">

@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion'
 import { ShieldAlert, Activity, TrendingUp, DollarSign, Percent } from 'lucide-react'
 
-interface Props { }
+interface Props { 
+  isFullscreen?: boolean;
+}
 
 const IMPACT = [
   { label: 'Ahorro Burocracia', value: '$12,400', sub: '+14% vs mes anterior', icon: DollarSign, color: '#10b981' },
@@ -9,14 +11,14 @@ const IMPACT = [
   { label: 'Compliance Rate', value: '99.9%', sub: '0 brechas detectadas',  icon: Percent,  color: '#8b5cf6' },
 ]
 
-export function FinCanvas({}: Props) {
+export function FinCanvas({ isFullscreen }: Props) {
   return (
     <div className="p-6 space-y-8 bg-transparent">
       <div>
         <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
           <TrendingUp size={10} /> Indicadores de Impacto
         </h3>
-        <div className="space-y-4">
+        <div className={isFullscreen ? "grid grid-cols-3 gap-6" : "space-y-4"}>
           {IMPACT.map((item, i) => (
             <motion.div key={item.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
               className="p-5 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all relative overflow-hidden group">

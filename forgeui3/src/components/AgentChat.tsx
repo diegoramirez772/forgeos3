@@ -16,36 +16,81 @@ const DOMAIN_COLOR: Record<Domain, string> = {
 
 function TypingOrb() {
   return (
-    <div className="flex flex-col items-center gap-4 py-8 w-full">
-      <div className="relative w-16 h-16 flex items-center justify-center">
-        {/* Outer Glow */}
+    <div className="flex flex-col items-center gap-6 py-12 w-full">
+      <div className="relative w-24 h-24 flex items-center justify-center">
+        {/* Multi-layered Glow */}
         <motion.div 
-          animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.4, 0.1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-full bg-forge/30 blur-2xl"
+          animate={{ scale: [1, 1.4, 1], opacity: [0.1, 0.3, 0.1] }}
+          transition={{ duration: 4, repeat: Infinity }}
+          className="absolute inset-0 rounded-full bg-forge/20 blur-3xl"
         />
-        {/* Core Orb */}
         <motion.div 
-          animate={{ scale: [1, 1.05, 1], rotate: 360 }}
-          transition={{ scale: { duration: 2, repeat: Infinity }, rotate: { duration: 12, repeat: Infinity, ease: "linear" } }}
-          className="w-12 h-12 rounded-full relative z-10 p-[2px] bg-gradient-to-tr from-forge via-forge/40 to-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-          <div className="w-full h-full rounded-full bg-[#080808] flex items-center justify-center overflow-hidden">
-            <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 2, repeat: Infinity }}
-              className="absolute inset-0 bg-gradient-to-b from-forge/20 to-transparent" />
-            <Zap size={16} className="text-forge animate-pulse shrink-0" />
+          animate={{ scale: [1, 1.2, 1], rotate: 360 }}
+          transition={{ duration: 8, repeat: Infinity }}
+          className="absolute inset-4 rounded-full border border-forge/20 border-dashed"
+        />
+        
+        {/* Core 3D-ish Orb */}
+        <motion.div 
+          animate={{ 
+            rotateY: [0, 360],
+            rotateX: [0, 180, 0],
+            scale: [0.95, 1.05, 0.95]
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 rounded-full relative z-10 p-[1px] bg-gradient-to-br from-forge via-white/40 to-forge shadow-[0_0_50px_rgba(139,92,246,0.4)]">
+          <div className="w-full h-full rounded-full bg-[#050505] flex items-center justify-center overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-tr from-forge/30 to-transparent animate-pulse" />
+            <Zap size={20} className="text-forge relative z-10 drop-shadow-[0_0_8px_rgba(139,92,246,0.8)]" />
           </div>
         </motion.div>
-        {/* Orbitals */}
-        {[0, 1].map(i => (
-          <motion.div key={i} animate={{ rotate: 360 }} transition={{ duration: 5 + i * 2, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-[-8px] rounded-full border border-white/5" style={{ rotate: i * 90 }}>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-forge/30 shadow-[0_0_8px_rgba(139,92,246,0.4)]" />
+
+        {/* Dynamic Orbitals */}
+        {[0, 1, 2].map(i => (
+          <motion.div 
+            key={i} 
+            animate={{ rotate: 360, rotateX: i * 45, rotateY: i * 30 }} 
+            transition={{ duration: 4 + i * 2, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-[-12px] rounded-full border border-white/5"
+          >
+            <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-forge/${20 + i * 10} shadow-lg`} />
           </motion.div>
         ))}
       </div>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/20">
-        Analizando Contexto...
-      </motion.p>
+      <div className="flex flex-col items-center gap-2">
+        <motion.p 
+          animate={{ opacity: [0.2, 0.5, 0.2] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="text-[10px] font-bold uppercase tracking-[0.4em] text-forge-light">
+          OpenClaw v4.2 Active
+        </motion.p>
+        <div className="flex gap-1">
+          {[0, 1, 2].map(i => (
+            <motion.div key={i} animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+              className="w-1 h-1 rounded-full bg-forge" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ArtifactSkeleton() {
+  return (
+    <div className="mt-4 p-5 rounded-[24px] bg-white/[0.03] border border-white/5 space-y-4 glow-border">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-xl skeleton-pulse" />
+        <div className="h-3 w-32 rounded-full skeleton-pulse" />
+      </div>
+      <div className="space-y-2">
+        <div className="h-2 w-full rounded-full skeleton-pulse" />
+        <div className="h-2 w-4/5 rounded-full skeleton-pulse" />
+      </div>
+      <div className="pt-4 flex gap-2">
+        <div className="h-8 w-24 rounded-lg skeleton-pulse" />
+        <div className="h-8 w-24 rounded-lg skeleton-pulse" />
+      </div>
     </div>
   )
 }
@@ -71,7 +116,32 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
   }, [messages.length, lastMsgContent])
 
   const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() }
+    if (e.key === 'Enter' && !e.shiftKey) { 
+      e.preventDefault()
+      
+      const cmd = input.toLowerCase().trim()
+      if (cmd.startsWith('/')) {
+        if (cmd === '/reset' || cmd === '/clear') {
+          useAgentStore.getState().clear()
+          toast.success('Sesión reiniciada', { icon: '🧹' })
+          onInput('')
+          return
+        }
+        if (cmd === '/map' || cmd === '/full') {
+          useAgentStore.getState().setIsFullscreen(!useAgentStore.getState().isFullscreen)
+          toast.success('Modo Fullscreen Toggled', { icon: '🗺️' })
+          onInput('')
+          return
+        }
+        if (cmd === '/trust') {
+          toast('Sentinel Score: 98.2% (Premium Status)', { icon: '🛡️', duration: 4000 })
+          onInput('')
+          return
+        }
+      }
+
+      onSend() 
+    }
   }
 
   const {
@@ -160,9 +230,9 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                    <div className="w-full h-full rounded-full bg-gradient-to-tr from-white/20 to-transparent" />
                 </div>
               </div>
-              <h2 className="text-xl font-bold text-white/90 mb-2">{t(lang, 'welcome')}</h2>
+              <h2 className="text-xl font-bold text-white/90 mb-2">{t(lang, 'welcome_title')}</h2>
               <p className="text-sm text-white/40 max-w-[280px]">
-                {t(lang, 'tagline').replace('{domain}', domain)}
+                {t(lang, 'welcome_subtitle')}
               </p>
             </motion.div>
           ) : (
@@ -170,7 +240,7 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
               <motion.div key={msg.id}
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.05 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group/msg`}>
+                className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} group/msg`}>
 
                 {msg.role === 'agent' && (
                   <div className="flex flex-col gap-4 max-w-[85%]">
@@ -188,7 +258,7 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                       </motion.div>
                     )}
 
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 w-full">
                       {/* Avatar tint */}
                       <div className="flex-shrink-0">
                         <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg"
@@ -198,11 +268,13 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                       </div>
 
                       <div className="space-y-4 w-full">
-                        {msg.loading ? <TypingOrb /> : (
-                          <div className="text-white/90 leading-[1.7] text-[14.5px] font-medium whitespace-pre-wrap selection:bg-forge/40">
-                            {msg.content}
-                          </div>
-                        )}
+                        <div className="glass-premium rounded-[28px] px-6 py-4 glow-border">
+                          {msg.loading ? <TypingOrb /> : (
+                            <div className="text-white/90 leading-[1.7] text-[14.5px] font-medium whitespace-pre-wrap selection:bg-forge/40">
+                              {msg.content}
+                            </div>
+                          )}
+                        </div>
 
                          {msg.artifacts && msg.artifacts.length > 0 && (
                            <div className="grid gap-4 pt-4 border-t border-white/5">
@@ -224,7 +296,7 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                                    </div>
                                  ) : (
                                    <motion.div whileHover={{ y: -2 }}
-                                     className="bg-white/[0.02] border border-white/5 rounded-[24px] p-6 hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer group shadow-xl relative overflow-hidden">
+                                     className="glass-premium rounded-[24px] p-6 glow-border hover:bg-white/[0.04] transition-all cursor-pointer group shadow-xl relative overflow-hidden">
                                      <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
                                         <Zap size={40} />
                                      </div>
@@ -259,13 +331,19 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                         </div>
                       </div>
                     </div>
+                    {/* Visual Skeleton during thought extraction */}
+                    {running && !msg.artifacts?.length && msg.id === messages[messages.length-1].id && (
+                      <div className="w-full pl-12">
+                        <ArtifactSkeleton />
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {msg.role === 'user' && (
-                  <div className="max-w-[70%] flex flex-col items-end">
-                    <div className="bg-white/5 border border-white/10 rounded-[24px] px-6 py-4 shadow-2xl backdrop-blur-md">
-                      <p className="text-[14.5px] leading-relaxed text-white/90 font-medium whitespace-pre-wrap selection:bg-forge/40">
+                  <div className="max-w-[75%] flex flex-col items-end">
+                    <div className="glass-premium bg-white shadow-2xl rounded-[30px] px-6 py-4 text-black glow-border">
+                      <p className="text-[14.5px] leading-relaxed font-medium whitespace-pre-wrap selection:bg-forge/40">
                         {msg.content}
                       </p>
                     </div>
@@ -285,7 +363,7 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
       <div className="p-8 pb-10">
         <div className="max-w-4xl mx-auto relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-forge/20 to-indigo-600/20 blur opacity-0 group-focus-within:opacity-100 transition duration-500 rounded-[30px]" />
-          <div className="relative flex items-end gap-3 bg-white/[0.03] border border-white/10 backdrop-blur-2xl rounded-[28px] p-3 pl-6 pr-3 transition-all group-focus-within:border-white/20 group-focus-within:bg-white/[0.05]">
+          <div className="relative flex items-end gap-3 glass-premium border border-white/10 rounded-[28px] p-3 pl-6 pr-3 transition-all group-focus-within:border-white/20 group-focus-within:bg-white/[0.05] glow-border">
             <textarea
               value={input}
               onChange={e => onInput(e.target.value)}

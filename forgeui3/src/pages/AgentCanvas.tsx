@@ -13,20 +13,28 @@ import { useAgentStore } from '../store/agentStore'
 import { runAgent }      from '../lib/agentClient'
 import { AGENTS, type Domain, type GovernanceEvent } from '../types'
 import { t, type Lang } from '../lib/translations'
+import confetti from 'canvas-confetti'
 
 export function AgentCanvas() {
   const { domain } = useParams<{ domain: string }>()
   const navigate = useNavigate()
   const [input, setInput] = useState('')
   const [sideOpen, setSideOpen] = useState(true)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
   const {
-    messages, govEvents, running, lang,
+    messages, govEvents, running, lang, isFullscreen,
     addMessage, updateLast, addGovEvent,
-    setRunning, clear, setLang
+    setRunning, clear, setLang, setIsFullscreen
   } = useAgentStore()
 
   const agent = AGENTS.find(a => a.domain === domain)
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 20
+    const y = (e.clientY / window.innerHeight - 0.5) * 20
+    setMousePos({ x, y })
+  }
 
   const handleSend = useCallback(async () => {
     if (!agent || !input.trim() || running) return
@@ -60,6 +68,12 @@ export function AgentCanvas() {
           toast.loading(`Approval required for ${evt.toolName}...`, { id: evt.toolName })
         } else if (evt.decision === 'allowed') {
           toast.success(`${evt.toolName} allowed`, { id: evt.toolName, duration: 2000 })
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: [agent.color, '#ffffff', '#ffd700']
+          })
         } else if (evt.decision === 'blocked') {
           toast.error(`${evt.toolName} blocked by policy`, { id: evt.toolName, duration: 3000 })
         }
@@ -82,14 +96,31 @@ export function AgentCanvas() {
     : domain === 'agrotech' ? AgroCanvas : FinCanvas
 
   return (
-    <div className="h-screen flex flex-col bg-[#050505] text-white overflow-hidden relative selection:bg-forge/30 selection:text-forge-light">
-      {/* Background Glow */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-5%] w-[30%] h-[30%] bg-forge/5 blur-[100px] rounded-full" />
+    <div 
+      onMouseMove={handleMouseMove}
+      className="h-screen flex flex-col bg-[#050505] text-white overflow-hidden relative selection:bg-forge/30 selection:text-forge-light">
+      
+      {/* Dynamic Parallax Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div 
+          className="parallax-layer opacity-20"
+          style={{ 
+            transform: `translate(${mousePos.x * 0.5}px, ${mousePos.y * 0.5}px)`,
+            background: `radial-gradient(circle at 70% 30%, ${agent.color}44 0%, transparent 70%)` 
+          }} 
+        />
+        <div 
+          className="parallax-layer opacity-10"
+          style={{ 
+            transform: `translate(${mousePos.x * -0.8}px, ${mousePos.y * -0.8}px)`,
+            background: `radial-gradient(circle at 20% 80%, ${agent.color}33 0%, transparent 60%)` 
+          }} 
+        />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
       </div>
 
       {/* Premium Header */}
-      <header className="h-14 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-between px-6 z-30">
+      <header className="h-14 glass-premium border-b border-white/5 flex items-center justify-between px-6 z-30">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/gallery')}
             className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all">
@@ -146,104 +177,96 @@ export function AgentCanvas() {
         <GovernanceBar domain={agent.domain as Domain} events={govEvents} running={running} />
       </div>
 
-      {/* Main */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {/* Main Container */}
+      <div className="flex-1 flex overflow-hidden relative">
+        
+        {/* Left panel (ContextPanel / Map) */}
+        <motion.div 
+          animate={{ 
+            width: isFullscreen ? '100%' : '260px',
+            flexShrink: 0
+          }}
+          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+          className={`relative overflow-hidden ${!isFullscreen ? 'border-r border-white/5' : ''}`}
+        >
+          <ContextPanel onExampleClick={setInput} color={agent.color} isFullscreen={isFullscreen} />
+        </motion.div>
 
-        {/* Left panel */}
-        <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid var(--border)', overflowY: 'auto' }}>
-          <ContextPanel onExampleClick={setInput} color={agent.color} />
-        </div>
-
-        {/* Chat */}
-        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          <AgentChat
-            domain={agent.domain as Domain}
-            messages={messages}
-            running={running}
-            input={input}
-            onInput={setInput}
-            onSend={handleSend}
-          />
-          <ApprovalWidget domain={agent.domain as Domain} />
-        </div>
-
-        {/* Right panel - Evidence Canvas */}
+        {/* Chat & Evidence (Animate Hiding) */}
         <AnimatePresence>
-          {sideOpen && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }} animate={{ width: 300, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="border-l border-white/5 bg-black/60 backdrop-blur-3xl overflow-y-auto overflow-x-hidden flex-shrink-0 z-20 shadow-2xl">
+          {!isFullscreen && (
+            <motion.div 
+              key="chat-evidence-panel"
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "circOut" }}
+              className="flex flex-1 min-w-0 overflow-hidden"
+            >
+              <div className="flex-1 overflow-hidden relative border-r border-white/5">
+                <AgentChat
+                  domain={agent.domain as Domain}
+                  messages={messages}
+                  running={running}
+                  input={input}
+                  onInput={setInput}
+                  onSend={handleSend}
+                />
+                <ApprovalWidget domain={agent.domain as Domain} />
+              </div>
 
-              <div className="p-5 border-b border-white/5 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-1">{t(lang, 'evidence_canvas')}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/50">{govEvents.length} {t(lang, 'audits')}</div>
+              {sideOpen && (
+                <div className="w-[300px] bg-black/40 backdrop-blur-3xl overflow-y-auto flex-shrink-0 z-20 shadow-2xl no-scrollbar flex flex-col">
+                  <div className="p-5 border-b border-white/5 flex items-center justify-between sticky top-0 bg-black/40 backdrop-blur-xl z-20">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-1">{t(lang, 'evidence_canvas')}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/50">{govEvents.length} {t(lang, 'audits')}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => setSideOpen(false)} className="text-white/20 hover:text-white transition-colors">
+                       <ChevronLeft size={14} className="rotate-180" />
+                    </button>
+                  </div>
+
+                  <div className="p-6 relative flex-1">
+                    <div className="absolute left-9 top-10 bottom-10 w-[1px] bg-white/[0.05]" />
+                    <div className="space-y-10 relative">
+                      {govEvents.length === 0 ? (
+                        <div className="py-20 text-center flex flex-col items-center gap-4">
+                          <div className="w-14 h-14 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-center">
+                            <Shield size={24} className="text-white/10" />
+                          </div>
+                          <p className="text-xs font-semibold text-white/20 uppercase tracking-widest">{t(lang, 'awaiting_audits')}</p>
+                        </div>
+                      ) : (
+                        [...govEvents].reverse().map((e, idx) => (
+                          <motion.div key={e.id} 
+                            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="relative pl-10 group"
+                          >
+                            <div className={`absolute left-[-4.5px] top-1.5 w-[10px] h-[10px] rounded-full border-2 border-[#050505] z-10 ${
+                              e.decision === 'allowed' ? 'bg-emerald-500' : e.decision === 'blocked' ? 'bg-red-500' : 'bg-amber-500'
+                            }`} />
+                            <div className="p-5 rounded-[28px] glass-premium border border-white/5 hover:border-white/10 transition-all glow-border">
+                              <div className="flex items-center justify-between mb-3 text-white">
+                                <span className="mono text-[9px] font-bold">{e.toolName.toUpperCase()}</span>
+                                <span className={`text-[9px] font-bold uppercase tracking-widest ${
+                                  e.decision === 'allowed' ? 'text-emerald-500' : e.decision === 'blocked' ? 'text-red-500' : 'text-amber-500'
+                                }`}>
+                                  {e.decision === 'approval_required' ? 'Pending' : e.decision}
+                                </span>
+                              </div>
+                              {e.reason && <p className="text-[11px] text-white/40 leading-relaxed line-clamp-3">{e.reason}</p>}
+                            </div>
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
-                <button onClick={() => setSideOpen(false)} className="text-white/20 hover:text-white transition-colors">
-                   <ChevronLeft size={14} className="rotate-180" />
-                </button>
-              </div>
-
-              <div className="p-6 relative">
-                {/* Vertical Line */}
-                <div className="absolute left-9 top-10 bottom-10 w-[1px] bg-white/[0.05]" />
-
-                <div className="space-y-10 relative">
-                  {govEvents.length === 0 ? (
-                    <div className="py-20 text-center flex flex-col items-center gap-4">
-                      <div className="w-14 h-14 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-center">
-                        <Shield size={24} className="text-white/10" />
-                      </div>
-                      <p className="text-xs font-semibold text-white/20 uppercase tracking-widest">{t(lang, 'awaiting_audits')}</p>
-                    </div>
-                  ) : (
-                    [...govEvents].reverse().map((e, idx) => {
-                      const isAllowed = e.decision === 'allowed'
-                      const isBlocked = e.decision === 'blocked'
-                      const statusColor = isAllowed ? 'bg-emerald-500' : isBlocked ? 'bg-red-500' : 'bg-amber-500'
-                      
-                      return (
-                        <motion.div key={e.id} 
-                          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          className="relative pl-10 group">
-                          
-                          {/* Timeline Dot */}
-                          <div className={`absolute left-[-4.5px] top-1.5 w-[10px] h-[10px] rounded-full border-2 border-[#0a0a0a] z-10 ${statusColor} shadow-[0_0_10px_rgba(0,0,0,1)] group-hover:scale-150 transition-transform`} />
-                          
-                          <div className="p-5 rounded-[28px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all shadow-xl">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-mono font-bold text-white/60 tracking-tighter">
-                                {e.toolName.toUpperCase()}
-                              </div>
-                              <span className={`text-[9px] font-bold uppercase tracking-widest ${isAllowed ? 'text-emerald-500' : isBlocked ? 'text-red-500' : 'text-amber-500'}`}>
-                                {e.decision === 'approval_required' ? 'Pending' : e.decision}
-                              </span>
-                            </div>
-                            
-                            {e.reason && (
-                              <p className="text-[12px] text-white/40 leading-relaxed mb-4 line-clamp-3">
-                                {e.reason}
-                              </p>
-                            )}
-
-                            <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                              <span className="text-[9px] font-mono text-white/10">{new Date(e.ts).toLocaleTimeString()}</span>
-                              <div className="flex gap-1">
-                                <span className="w-1 h-1 rounded-full bg-white/5" />
-                                <span className="w-1 h-1 rounded-full bg-white/5" />
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

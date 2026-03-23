@@ -1,7 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { Download, Maximize2, Minimize2 } from 'lucide-react'
 import { useAgentStore } from '../store/agentStore'
 import { t } from '../lib/translations'
 import type { GovernanceEvent, Domain } from '../types'
+import { AGENTS } from '../types'
+import { toast } from 'react-hot-toast'
 
 const DOMAIN_COLOR: Record<Domain, string> = {
   healthtech: '#00d084',
@@ -16,12 +19,38 @@ interface Props {
 }
 
 export function GovernanceBar({ domain, events, running }: Props) {
-  const { lang } = useAgentStore()
+  const { lang, isFullscreen, setIsFullscreen } = useAgentStore()
   const color  = DOMAIN_COLOR[domain]
   const recent = events.slice(-5)
 
+  const handleExportCSV = () => {
+    if (events.length === 0) {
+      toast.error('No hay eventos para exportar')
+      return
+    }
+    const headers = ['ID', 'Tool', 'Decision', 'Reason', 'Timestamp']
+    const csvContent = [
+      headers.join(','),
+      ...events.map(e => [
+        e.id,
+        e.toolName,
+        e.decision,
+        `"${(e.reason || '').replace(/"/g, '""')}"`,
+        new Date(e.ts).toISOString()
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `forge_audit_${domain}_${Date.now()}.csv`)
+    link.click()
+    toast.success('Log de Auditoría exportado (CSV)')
+  }
+
   return (
-    <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+    <div className="glass-premium border-b border-white/5 z-20">
       <div className="flex items-center gap-4 px-6 py-2.5">
 
         {/* Status dot */}
@@ -82,12 +111,33 @@ export function GovernanceBar({ domain, events, running }: Props) {
           </AnimatePresence>
         </div>
 
-        {/* ForgeOS3 badge */}
-        <div className="shrink-0 flex items-center gap-1.5">
-          <span className="w-1 h-1 rounded-full" style={{ background: 'var(--forge)' }} />
-          <span className="mono text-[10px]" style={{ color: 'var(--subtle)' }}>
-            ForgeOS3
-          </span>
+        {/* ForgeOS3 badge & Actions */}
+        <div className="shrink-0 flex items-center gap-4">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/5">
+            <span className="w-1 h-1 rounded-full animate-pulse" style={{ background: color }} />
+            <span className="mono text-[9px] font-bold tracking-widest text-white/40 uppercase">
+              {domain} Node
+            </span>
+          </div>
+
+          <div className="h-4 w-[1px] bg-white/5" />
+
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleExportCSV}
+              className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/30 hover:text-forge-light hover:bg-forge/10 transition-all"
+              title="Export CSV">
+              <Download size={14} />
+            </button>
+            <button 
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                isFullscreen ? 'bg-forge text-white shadow-lg' : 'bg-white/5 text-white/30 hover:text-white hover:bg-white/10'
+              }`}
+              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
+              {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+          </div>
         </div>
       </div>
     </div>

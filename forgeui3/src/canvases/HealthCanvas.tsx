@@ -4,7 +4,11 @@ import { MapWidget } from '../components/MapWidget'
 import { useAgentStore } from '../store/agentStore'
 import { t } from '../lib/translations'
 
-interface Props { onExampleClick: (ex: string) => void; color: string }
+interface Props { 
+  onExampleClick: (ex: string) => void; 
+  color: string;
+  isFullscreen?: boolean;
+}
 
 const CLINIC_POS: [number, number] = [24.0221, -104.6588]
 
@@ -21,7 +25,7 @@ const EXAMPLES = [
   'Instrucciones de alta diabético',
 ]
 
-export function HealthCanvas({ onExampleClick, color }: Props) {
+export function HealthCanvas({ onExampleClick, color, isFullscreen }: Props) {
   const { lang } = useAgentStore()
   return (
     <div className="p-6 space-y-8 bg-transparent">
@@ -31,8 +35,8 @@ export function HealthCanvas({ onExampleClick, color }: Props) {
         </h3>
         <MapWidget 
           center={CLINIC_POS} 
-          zoom={15} 
-          height="180px"
+          zoom={isFullscreen ? 16 : 15} 
+          height={isFullscreen ? "500px" : "180px"}
           points={[{ lat: CLINIC_POS[0], lng: CLINIC_POS[1], label: 'Unidad Médica Durango Sur' }]}
         />
       </div>
@@ -41,7 +45,7 @@ export function HealthCanvas({ onExampleClick, color }: Props) {
         <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
           <Activity size={10} /> {t(lang, 'active_sensors')}
         </h3>
-        <div className="space-y-3">
+        <div className={isFullscreen ? "grid grid-cols-3 gap-4" : "space-y-3"}>
           {STATS.map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
               className="flex justify-between items-center p-4 rounded-[20px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all">

@@ -1,7 +1,7 @@
 const translations = {
   ESP: {
-    welcome: "Buen día, Durango.",
-    tagline: "Soy tu asistente especializado en {domain}. ¿En qué puedo ayudarte hoy?",
+    welcome_title: "Bienvenido a Durango Forge",
+    welcome_subtitle: "Soy tu asistente de Inteligencia Artificial para el monitoreo y gobernanza de {domain}. ¿Cómo puedo asistirte hoy?",
     evaluating: "EVALUANDO",
     ready: "LISTO",
     trust_score: "Nivel de Confianza",
@@ -22,8 +22,8 @@ const translations = {
     compliance_alert: "Alerta de Cumplimiento",
   },
   ENG: {
-    welcome: "Good day, Durango.",
-    tagline: "I am your specialist assistant in {domain}. How can I help you today?",
+    welcome_title: "Welcome to Durango Forge",
+    welcome_subtitle: "I am your Artificial Intelligence assistant for monitoring and governance of {domain}. How can I assist you today?",
     evaluating: "EVALUATING",
     ready: "READY",
     trust_score: "Trust Score",
@@ -44,8 +44,8 @@ const translations = {
     compliance_alert: "Compliance Alert",
   },
   NHN: {
-    welcome: "Niltze, Durango.",
-    tagline: "Nomatca nehuatl nimitzpalehuiz ipan {domain}. ¿Quenque nimitzpalehuiz axcan?",
+    welcome_title: "Niltze, Durango Forge",
+    welcome_subtitle: "Nomatca nehuatl nimitzpalehuiz ipan {domain}. ¿Quenque nimitzpalehuiz axcan?",
     evaluating: "TLAMACHTILIZTLI",
     ready: "YEC",
     trust_score: "Tlatencuauhtiliztli",
