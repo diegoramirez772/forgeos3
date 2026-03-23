@@ -12,6 +12,7 @@ import { ApprovalWidget } from '../components/ApprovalWidget'
 import { useAgentStore } from '../store/agentStore'
 import { runAgent }      from '../lib/agentClient'
 import { AGENTS, type Domain, type GovernanceEvent } from '../types'
+import { t, type Lang } from '../lib/translations'
 
 export function AgentCanvas() {
   const { domain } = useParams<{ domain: string }>()
@@ -20,9 +21,9 @@ export function AgentCanvas() {
   const [sideOpen, setSideOpen] = useState(true)
 
   const {
-    messages, govEvents, running,
+    messages, govEvents, running, lang,
     addMessage, updateLast, addGovEvent,
-    setRunning, clear,
+    setRunning, clear, setLang
   } = useAgentStore()
 
   const agent = AGENTS.find(a => a.domain === domain)
@@ -104,7 +105,7 @@ export function AgentCanvas() {
               <div className="text-xs font-bold tracking-tight">{agent.name}</div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Sentinel Active</span>
+                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">{t(lang, 'sentinel_active')}</span>
               </div>
             </div>
           </div>
@@ -114,12 +115,23 @@ export function AgentCanvas() {
           {/* Confidence Score */}
           <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
             <div className="text-right">
-              <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.1em]">Trust Score</div>
+              <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.1em]">{t(lang, 'trust_score')}</div>
               <div className="text-[11px] font-bold text-emerald-400">98.2% Perfect</div>
             </div>
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
               <Shield size={14} className="text-emerald-500" />
             </div>
+          </div>
+
+          <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/10 mr-2">
+            {(['ESP', 'ENG', 'NHN'] as const).map(l => (
+              <button 
+                key={l} 
+                onClick={() => setLang(l)}
+                className={`px-2 py-1 rounded-lg text-[8px] font-bold transition-all ${lang === l ? 'bg-forge text-black shadow-lg' : 'text-white/20 hover:text-white'}`}>
+                {l}
+              </button>
+            ))}
           </div>
 
           <button onClick={clear}
@@ -165,9 +177,9 @@ export function AgentCanvas() {
 
               <div className="p-5 border-b border-white/5 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-1">Evidence Canvas</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-1">{t(lang, 'evidence_canvas')}</p>
                   <div className="flex items-center gap-2">
-                    <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/50">{govEvents.length} AUDITS</div>
+                    <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/50">{govEvents.length} {t(lang, 'audits')}</div>
                   </div>
                 </div>
                 <button onClick={() => setSideOpen(false)} className="text-white/20 hover:text-white transition-colors">
@@ -175,41 +187,62 @@ export function AgentCanvas() {
                 </button>
               </div>
 
-              <div className="p-4 space-y-3">
-                {govEvents.length === 0 ? (
-                  <div className="py-20 text-center flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
-                      <Shield size={20} className="text-white/10" />
-                    </div>
-                    <p className="text-xs font-medium text-white/20">Awaiting governance events...</p>
-                  </div>
-                ) : (
-                  [...govEvents].reverse().map(e => {
-                    const isAllowed = e.decision === 'allowed'
-                    const isBlocked = e.decision === 'blocked'
-                    const statusColor = isAllowed ? 'text-emerald-500' : isBlocked ? 'text-red-500' : 'text-amber-500'
-                    const bgColor = isAllowed ? 'bg-emerald-500/5' : isBlocked ? 'bg-red-500/5' : 'bg-amber-500/5'
-                    const borderColor = isAllowed ? 'border-emerald-500/10' : isBlocked ? 'border-red-500/10' : 'border-amber-500/10'
+              <div className="p-6 relative">
+                {/* Vertical Line */}
+                <div className="absolute left-9 top-10 bottom-10 w-[1px] bg-white/[0.05]" />
 
-                    return (
-                      <motion.div key={e.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-                        className={`p-4 rounded-2xl border ${bgColor} ${borderColor} transition-all hover:scale-[1.02]`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <code className="text-[10px] font-bold text-white/60">{e.toolName}</code>
-                          <span className={`text-[8px] font-bold uppercase tracking-widest ${statusColor}`}>
-                            {e.decision === 'approval_required' ? 'pending' : e.decision}
-                          </span>
-                        </div>
-                        {e.reason && (
-                          <p className="text-[11px] text-white/40 leading-relaxed mb-3">{e.reason}</p>
-                        )}
-                        <div className="text-[9px] font-mono text-white/20">
-                          {new Date(e.ts).toLocaleTimeString()} · sentinel_v3
-                        </div>
-                      </motion.div>
-                    )
-                  })
-                )}
+                <div className="space-y-10 relative">
+                  {govEvents.length === 0 ? (
+                    <div className="py-20 text-center flex flex-col items-center gap-4">
+                      <div className="w-14 h-14 rounded-3xl bg-white/[0.03] border border-white/5 flex items-center justify-center">
+                        <Shield size={24} className="text-white/10" />
+                      </div>
+                      <p className="text-xs font-semibold text-white/20 uppercase tracking-widest">{t(lang, 'awaiting_audits')}</p>
+                    </div>
+                  ) : (
+                    [...govEvents].reverse().map((e, idx) => {
+                      const isAllowed = e.decision === 'allowed'
+                      const isBlocked = e.decision === 'blocked'
+                      const statusColor = isAllowed ? 'bg-emerald-500' : isBlocked ? 'bg-red-500' : 'bg-amber-500'
+                      
+                      return (
+                        <motion.div key={e.id} 
+                          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className="relative pl-10 group">
+                          
+                          {/* Timeline Dot */}
+                          <div className={`absolute left-[-4.5px] top-1.5 w-[10px] h-[10px] rounded-full border-2 border-[#0a0a0a] z-10 ${statusColor} shadow-[0_0_10px_rgba(0,0,0,1)] group-hover:scale-150 transition-transform`} />
+                          
+                          <div className="p-5 rounded-[28px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all shadow-xl">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-mono font-bold text-white/60 tracking-tighter">
+                                {e.toolName.toUpperCase()}
+                              </div>
+                              <span className={`text-[9px] font-bold uppercase tracking-widest ${isAllowed ? 'text-emerald-500' : isBlocked ? 'text-red-500' : 'text-amber-500'}`}>
+                                {e.decision === 'approval_required' ? 'Pending' : e.decision}
+                              </span>
+                            </div>
+                            
+                            {e.reason && (
+                              <p className="text-[12px] text-white/40 leading-relaxed mb-4 line-clamp-3">
+                                {e.reason}
+                              </p>
+                            )}
+
+                            <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                              <span className="text-[9px] font-mono text-white/10">{new Date(e.ts).toLocaleTimeString()}</span>
+                              <div className="flex gap-1">
+                                <span className="w-1 h-1 rounded-full bg-white/5" />
+                                <span className="w-1 h-1 rounded-full bg-white/5" />
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    })
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

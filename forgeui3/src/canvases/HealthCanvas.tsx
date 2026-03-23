@@ -1,7 +1,12 @@
 import { motion } from 'framer-motion'
-import { Activity, Clipboard, UserPlus, ShieldPlus } from 'lucide-react'
+import { Activity, Clipboard, UserPlus, MapPin } from 'lucide-react'
+import { MapWidget } from '../components/MapWidget'
+import { useAgentStore } from '../store/agentStore'
+import { t } from '../lib/translations'
 
 interface Props { onExampleClick: (ex: string) => void; color: string }
+
+const CLINIC_POS: [number, number] = [24.0221, -104.6588]
 
 const STATS = [
   { label: 'Pacientes hoy',  value: '24', icon: UserPlus },
@@ -17,13 +22,26 @@ const EXAMPLES = [
 ]
 
 export function HealthCanvas({ onExampleClick, color }: Props) {
+  const { lang } = useAgentStore()
   return (
     <div className="p-6 space-y-8 bg-transparent">
       <div>
         <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
-          <Activity size={10} /> Contexto Clínico
+          <MapPin size={10} /> {t(lang, 'health_location')}
         </h3>
-        <div className="space-y-4">
+        <MapWidget 
+          center={CLINIC_POS} 
+          zoom={15} 
+          height="180px"
+          points={[{ lat: CLINIC_POS[0], lng: CLINIC_POS[1], label: 'Unidad Médica Durango Sur' }]}
+        />
+      </div>
+
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
+          <Activity size={10} /> {t(lang, 'active_sensors')}
+        </h3>
+        <div className="space-y-3">
           {STATS.map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
               className="flex justify-between items-center p-4 rounded-[20px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all">
@@ -47,13 +65,6 @@ export function HealthCanvas({ onExampleClick, color }: Props) {
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="p-4 rounded-2xl bg-sky-500/5 border border-sky-500/10 flex items-start gap-3">
-        <ShieldPlus size={14} className="text-sky-500 mt-0.5" />
-        <p className="text-[10px] leading-relaxed text-sky-500/60 font-bold uppercase tracking-wider">
-          Protocolo Seguro: diagnóstico y registros requieren validación humana
-        </p>
       </div>
     </div>
   )

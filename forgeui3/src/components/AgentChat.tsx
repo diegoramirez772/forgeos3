@@ -1,7 +1,12 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowUp, Zap, Shield } from 'lucide-react'
-import type { Message, Domain } from '../types'
+import { ArrowUp, Zap, Shield, Mic, MicOff } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition'
+import { type Message, type Domain } from '../types'
+import { useAgentStore } from '../store/agentStore'
+import { t } from '../lib/translations'
+import { MapWidget } from './MapWidget'
 
 const DOMAIN_COLOR: Record<Domain, string> = {
   healthtech: '#00d084',
@@ -9,12 +14,38 @@ const DOMAIN_COLOR: Record<Domain, string> = {
   fintech:    '#f5a623',
 }
 
-function TypingDots() {
+function TypingOrb() {
   return (
-    <div className="flex items-center gap-1 py-0.5">
-      {[0,1,2].map(i => (
-        <span key={i} className="typing-dot w-1 h-1 rounded-full bg-[var(--muted)]" />
-      ))}
+    <div className="flex flex-col items-center gap-4 py-8 w-full">
+      <div className="relative w-16 h-16 flex items-center justify-center">
+        {/* Outer Glow */}
+        <motion.div 
+          animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.4, 0.1] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute inset-0 rounded-full bg-forge/30 blur-2xl"
+        />
+        {/* Core Orb */}
+        <motion.div 
+          animate={{ scale: [1, 1.05, 1], rotate: 360 }}
+          transition={{ scale: { duration: 2, repeat: Infinity }, rotate: { duration: 12, repeat: Infinity, ease: "linear" } }}
+          className="w-12 h-12 rounded-full relative z-10 p-[2px] bg-gradient-to-tr from-forge via-forge/40 to-white/20 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+          <div className="w-full h-full rounded-full bg-[#080808] flex items-center justify-center overflow-hidden">
+            <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 2, repeat: Infinity }}
+              className="absolute inset-0 bg-gradient-to-b from-forge/20 to-transparent" />
+            <Zap size={16} className="text-forge animate-pulse shrink-0" />
+          </div>
+        </motion.div>
+        {/* Orbitals */}
+        {[0, 1].map(i => (
+          <motion.div key={i} animate={{ rotate: 360 }} transition={{ duration: 5 + i * 2, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-[-8px] rounded-full border border-white/5" style={{ rotate: i * 90 }}>
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-forge/30 shadow-[0_0_8px_rgba(139,92,246,0.4)]" />
+          </motion.div>
+        ))}
+      </div>
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/20">
+        Analizando Contexto...
+      </motion.p>
     </div>
   )
 }
@@ -29,6 +60,7 @@ interface Props {
 }
 
 export function AgentChat({ domain, messages, running, input, onInput, onSend }: Props) {
+  const { lang } = useAgentStore()
   const bottomRef = useRef<HTMLDivElement>(null)
   const color = DOMAIN_COLOR[domain]
 
@@ -40,6 +72,73 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend() }
+  }
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition()
+
+  const inputRef = useRef(input)
+  const baseInputRef = useRef('')
+
+  useEffect(() => {
+    inputRef.current = input
+  }, [input])
+
+  // Sincronizar el transcript con el input real-time
+  useEffect(() => {
+    if (listening) {
+      onInput(baseInputRef.current + (baseInputRef.current ? ' ' : '') + transcript)
+    }
+  }, [transcript, listening])
+
+  const toggleListening = () => {
+    if (!browserSupportsSpeechRecognition) {
+      toast.error('Navegador no compatible')
+      return
+    }
+
+    if (listening) {
+      SpeechRecognition.stopListening()
+      toast.dismiss('voice-toast')
+    } else {
+      resetTranscript()
+      baseInputRef.current = inputRef.current
+      const targetLang = lang === 'ENG' ? 'en-US' : 'es-MX'
+      
+      console.log('--- STARTING VOICE ---')
+      console.log('Lang:', targetLang)
+      console.log('Base:', baseInputRef.current)
+
+      SpeechRecognition.startListening({ 
+        continuous: true, 
+        language: targetLang,
+      }).catch(err => {
+        console.error('SR Start Error:', err)
+        toast.error(`Error de inicio: ${err.message || err.toString()}`)
+      })
+
+      toast.success(lang === 'ENG' ? `Listening (English)...` : `Escuchando (Español)...`, { 
+        icon: '🎤', 
+        id: 'voice-toast', 
+        duration: 8000 
+      })
+    }
+  }
+
+  const handleDownload = (art: any) => {
+    const content = typeof art.data === 'string' ? art.data : JSON.stringify(art.data, null, 2)
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${art.title.toLowerCase().replace(/ /g, '_')}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Archivo preparado para descarga')
   }
 
   return (
@@ -61,9 +160,9 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                    <div className="w-full h-full rounded-full bg-gradient-to-tr from-white/20 to-transparent" />
                 </div>
               </div>
-              <h2 className="text-xl font-bold text-white/90 mb-2">Buen día, Durango.</h2>
+              <h2 className="text-xl font-bold text-white/90 mb-2">{t(lang, 'welcome')}</h2>
               <p className="text-sm text-white/40 max-w-[280px]">
-                Soy tu asistente especializado en <span style={{ color }}>{domain}</span>. ¿En qué puedo ayudarte hoy?
+                {t(lang, 'tagline').replace('{domain}', domain)}
               </p>
             </motion.div>
           ) : (
@@ -81,7 +180,7 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                         className="bg-white/[0.03] border border-white/5 rounded-[22px] px-5 py-4 backdrop-blur-3xl overflow-hidden relative group/thought">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-1.5 h-1.5 rounded-full bg-white/20 group-hover/thought:bg-forge transition-colors" />
-                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Análisis Sentinel</span>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">{t(lang, 'analysis_sentinel')}</span>
                         </div>
                         <p className="text-[12px] leading-relaxed text-white/50 italic font-medium whitespace-pre-wrap selection:bg-forge/40">
                           {msg.thoughts}
@@ -98,41 +197,62 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
                         </div>
                       </div>
 
-                      <div className="space-y-4">
-                        {msg.loading ? <div className="px-4 py-2"><TypingDots /></div> : (
+                      <div className="space-y-4 w-full">
+                        {msg.loading ? <TypingOrb /> : (
                           <div className="text-white/90 leading-[1.7] text-[14.5px] font-medium whitespace-pre-wrap selection:bg-forge/40">
                             {msg.content}
                           </div>
                         )}
 
-                        {/* Artifacts - Premium Cards */}
-                        {msg.artifacts && msg.artifacts.length > 0 && (
-                          <div className="grid gap-4 pt-4 border-t border-white/5">
-                            {msg.artifacts.map(art => (
-                              <motion.div key={art.id} whileHover={{ y: -2 }}
-                                className="bg-white/[0.02] border border-white/5 rounded-[24px] p-6 hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer group shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
-                                   <Zap size={40} />
-                                </div>
-                                <div className="flex items-center justify-between mb-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-white/5 border border-white/10 text-xl shadow-lg">
-                                      {art.type === 'ticket' ? '🎫' : art.type === 'map' ? '🗺️' : '📊'}
-                                    </div>
-                                    <div>
-                                      <h4 className="text-[13px] font-bold text-white group-hover:text-forge-light transition-colors">{art.title}</h4>
-                                      <span className="text-[9px] font-bold uppercase tracking-widest text-white/20">Artifact Engine v1</span>
-                                    </div>
-                                  </div>
-                                  <ArrowUp size={14} className="rotate-45 text-white/10 group-hover:text-white transition-colors" />
-                                </div>
-                                <div className="text-[11.5px] text-white/40 leading-relaxed font-mono bg-black/20 p-3 rounded-xl border border-white/[0.02]">
-                                  {typeof art.data === 'string' ? art.data : JSON.stringify(art.data, null, 2)}
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        )}
+                         {msg.artifacts && msg.artifacts.length > 0 && (
+                           <div className="grid gap-4 pt-4 border-t border-white/5">
+                             {msg.artifacts.map(art => (
+                               <div key={art.id} className="w-full">
+                                 {art.type === 'map' ? (
+                                   <div className="space-y-3">
+                                     <div className="flex items-center justify-between px-2">
+                                       <h4 className="text-[11px] font-bold text-white/60 tracking-wider uppercase">{art.title}</h4>
+                                       <span className="text-[9px] font-mono text-white/20">LIVE_GEODATA</span>
+                                     </div>
+                                     <MapWidget 
+                                       center={art.data.center || [24.0277, -104.6532]} 
+                                       zoom={art.data.zoom || 13}
+                                       points={art.data.points || []}
+                                       polygons={art.data.polygons || []}
+                                       height="300px"
+                                     />
+                                   </div>
+                                 ) : (
+                                   <motion.div whileHover={{ y: -2 }}
+                                     className="bg-white/[0.02] border border-white/5 rounded-[24px] p-6 hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer group shadow-xl relative overflow-hidden">
+                                     <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+                                        <Zap size={40} />
+                                     </div>
+                                     <div className="flex items-center justify-between mb-4">
+                                       <div className="flex items-center gap-3">
+                                         <div className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-white/5 border border-white/10 text-xl shadow-lg">
+                                           {art.type === 'ticket' ? '🎫' : art.type === 'report' ? '📊' : '📄'}
+                                         </div>
+                                         <div>
+                                           <h4 className="text-[13px] font-bold text-white group-hover:text-forge-light transition-colors">{art.title}</h4>
+                                           <span className="text-[9px] font-bold uppercase tracking-widest text-white/20">Artifact Engine v1</span>
+                                         </div>
+                                       </div>
+                                       <button 
+                                         onClick={() => handleDownload(art)}
+                                         className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-forge/10 border border-forge/20 text-[10px] font-bold text-forge-light hover:bg-forge/20 transition-all pointer-events-auto">
+                                         <ArrowUp size={12} className="rotate-180" /> {t(lang, 'download_pdf')}
+                                       </button>
+                                     </div>
+                                     <div className="text-[11.5px] text-white/40 leading-relaxed font-mono bg-black/20 p-3 rounded-xl border border-white/[0.02]">
+                                       {typeof art.data === 'string' ? art.data : JSON.stringify(art.data, null, 2)}
+                                     </div>
+                                   </motion.div>
+                                 )}
+                               </div>
+                             ))}
+                           </div>
+                         )}
 
                         <div className="flex items-center gap-2 text-[10px] font-bold text-white/10 uppercase tracking-widest pt-2">
                            Sentinel Audit · {new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -171,10 +291,17 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
               onChange={e => onInput(e.target.value)}
               onKeyDown={handleKey}
               disabled={running}
-              placeholder="Escribe una instrucción para el agente..."
+              placeholder={t(lang, 'placeholder')}
               rows={1}
               className="flex-1 bg-transparent border-none focus:ring-0 text-[14.5px] py-3 text-white placeholder-white/20 resize-none no-scrollbar h-[44px] max-h-[160px]"
             />
+            <button
+              onClick={toggleListening}
+              className={`w-11 h-11 rounded-[18px] flex items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
+                listening ? 'bg-red-500 text-white animate-pulse' : 'bg-white/5 text-white/40 hover:bg-white/10'
+              }`}>
+              {listening ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
             <button
               onClick={onSend}
               disabled={running || !input.trim()}
@@ -188,7 +315,7 @@ export function AgentChat({ domain, messages, running, input, onInput, onSend }:
           </div>
           <div className="mt-4 flex items-center justify-center gap-6">
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">
-               <Shield size={10} className="text-emerald-500/40" /> Policy Guard Enabled
+               <Shield size={10} className="text-emerald-500/40" /> {t(lang, 'policy_guard')}
             </div>
             <div className="w-[1px] h-3 bg-white/5" />
             <div className="text-[10px] font-bold text-white/10 uppercase tracking-[0.2em] font-mono">

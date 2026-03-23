@@ -1,14 +1,17 @@
-import { motion } from 'framer-motion'
-import { Leaf, Droplets, TrendingUp, ShieldCheck } from 'lucide-react'
+import { ShieldCheck, Map as MapIcon, Database } from 'lucide-react'
+import { MapWidget } from '../components/MapWidget'
+import { useAgentStore } from '../store/agentStore'
+import { t } from '../lib/translations'
 
 interface Props { onExampleClick: (ex: string) => void }
 
-const FIELDS = [
-  { id: '#22', status: 'Tratamiento', risk: 'high',   pct: 85, icon: Leaf },
-  { id: '#08', status: 'Saludable',   risk: 'low',    pct: 12, icon: Droplets },
-  { id: '#15', status: 'Monitoreo',  risk: 'medium', pct: 44, icon: TrendingUp },
+const DURANGO_AGRO_CENTER: [number, number] = [24.0277, -104.6532]
+const AFFECTED_POLYGON: [number, number][] = [
+  [24.035, -104.660],
+  [24.040, -104.650],
+  [24.030, -104.640],
+  [24.025, -104.655],
 ]
-const RISK_COLOR: Record<string, string> = { high: '#ef4444', medium: '#f5a623', low: '#10b981' }
 
 const EXAMPLES = [
   'Analizar sensores del campo #22',
@@ -18,36 +21,36 @@ const EXAMPLES = [
 ]
 
 export function AgroCanvas({ onExampleClick }: Props) {
+  const { lang } = useAgentStore()
   return (
     <div className="p-6 space-y-8 bg-transparent">
       <div>
         <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
-          <Leaf size={10} /> Monitoreo de Campo
+          <MapIcon size={10} /> {t(lang, 'agro_location')}
         </h3>
-        <div className="space-y-4">
-          {FIELDS.map((f, i) => (
-            <motion.div key={f.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
-              className="p-4 rounded-[20px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all group">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-mono text-white/40">
-                    {f.id}
-                  </div>
-                  <span className="text-xs font-bold text-white/80">{f.status}</span>
-                </div>
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: RISK_COLOR[f.risk] }} />
-              </div>
-              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${f.pct}%` }} transition={{ duration: 1, delay: 0.5 }}
-                  className="h-full rounded-full" style={{ background: RISK_COLOR[f.risk] }} />
-              </div>
-            </motion.div>
-          ))}
+        <MapWidget 
+          center={DURANGO_AGRO_CENTER} 
+          zoom={14} 
+          polygons={[AFFECTED_POLYGON]}
+          height="240px"
+          points={[{ lat: DURANGO_AGRO_CENTER[0], lng: DURANGO_AGRO_CENTER[1], label: 'Sector Norte - Monitoreo' }]}
+        />
+        <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{t(lang, 'satellite_feed')}</span>
+            <span className="text-[9px] font-mono text-white/10 italic">ORBIT_X_102</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-forge animate-pulse" />
+            <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Sector #44 - Anomalía Detectada</span>
+          </div>
         </div>
       </div>
 
       <div>
-        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Sugerencias Durango</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4 flex items-center gap-2">
+          <Database size={10} /> {t(lang, 'active_sensors')}
+        </h3>
         <div className="grid gap-2">
           {EXAMPLES.map((ex) => (
             <button key={ex} onClick={() => onExampleClick(ex)}

@@ -27,12 +27,14 @@ function Protected({ children }: { children: React.ReactNode }) {
 }
 
 import { Toaster } from 'react-hot-toast'
+import { CommandPalette } from './components/CommandPalette'
 
 export default function App() {
   return (
     <>
       <Toaster position="top-center" toastOptions={{ style: { background: 'var(--color-surface)', color: 'var(--color-primary)', border: '1px solid var(--color-border)' } }} />
       <BrowserRouter>
+        <CommandPalette />
         <Routes>
           <Route path="/"               element={<Landing />}    />
           <Route path="/signin"         element={<SignIn />}     />

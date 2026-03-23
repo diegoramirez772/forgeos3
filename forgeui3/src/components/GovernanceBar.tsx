@@ -1,4 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAgentStore } from '../store/agentStore'
+import { t } from '../lib/translations'
 import type { GovernanceEvent, Domain } from '../types'
 
 const DOMAIN_COLOR: Record<Domain, string> = {
@@ -14,6 +16,7 @@ interface Props {
 }
 
 export function GovernanceBar({ domain, events, running }: Props) {
+  const { lang } = useAgentStore()
   const color  = DOMAIN_COLOR[domain]
   const recent = events.slice(-5)
 
@@ -33,7 +36,7 @@ export function GovernanceBar({ domain, events, running }: Props) {
           </div>
           <span className="mono text-[10px] tracking-wider"
             style={{ color: running ? color : 'var(--subtle)' }}>
-            {running ? 'EVALUATING' : 'READY'}
+            {running ? t(lang, 'evaluating') : t(lang, 'ready')}
           </span>
         </div>
 

@@ -7,8 +7,10 @@ interface AgentState {
   govEvents:   GovernanceEvent[]
   running:     boolean
   runId:       string | null
+  lang:        'ESP' | 'ENG' | 'NHN'
 
   setDomain:   (d: Domain) => void
+  setLang:     (l: 'ESP' | 'ENG' | 'NHN') => void
   addMessage:  (m: Message) => void
   updateLast:  (content: string, thoughts?: string, artifacts?: Message['artifacts']) => void
   addGovEvent: (e: GovernanceEvent) => void
@@ -23,8 +25,10 @@ export const useAgentStore = create<AgentState>((set) => ({
   govEvents: [],
   running:   false,
   runId:     null,
+  lang:      'ESP',
 
   setDomain:   (domain)  => set({ domain }),
+  setLang:     (lang)    => set({ lang }),
   addMessage:  (m)       => set(s => ({ messages:  [...s.messages,  m] })),
   updateLast:  (content: string, thoughts?: string, artifacts?: Message['artifacts']) => set(s => {
     const msgs = [...s.messages]
