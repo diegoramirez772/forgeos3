@@ -11,7 +11,7 @@ export interface AgentRunOptions {
   onError:   (msg: string) => void
 }
 
-const AGENT_BASE = 'http://localhost:4000'
+const AGENT_BASE = import.meta.env.VITE_AGENT_URL || 'http://localhost:4000'
 
 export async function runAgent(opts: AgentRunOptions) {
   const { domain, agentId, agentName, input, onToken, onGovEvent, onDone, onError } = opts
