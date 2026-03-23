@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, LogOut } from 'lucide-react'
+import { ArrowRight, LogOut, Zap } from 'lucide-react'
 import { AGENTS } from '../types'
 import { supabase } from '../lib/supabase'
 
@@ -21,105 +21,112 @@ export function Gallery() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
-
-      {/* Sidebar */}
-      <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, width: 220, borderRight: '1px solid var(--color-border)', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', padding: '20px 12px', zIndex: 40 }}>
-
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 8px', marginBottom: 24 }}>
-          <div style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--color-forge)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>F</span>
-          </div>
-          <span style={{ fontWeight: 600, color: 'var(--color-white)', fontSize: 14, letterSpacing: '-0.02em' }}>
-            Forge<span style={{ color: 'var(--color-forge)' }}>UI</span>3
-          </span>
-        </div>
-
-        {/* Nav */}
-        <div style={{ flex: 1 }}>
-          <p style={{ color: 'var(--color-subtle)', fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0 8px', marginBottom: 6 }}>
-            Agents
-          </p>
-          {AGENTS.map(agent => (
-            <button key={agent.id} onClick={() => navigate(`/canvas/${agent.domain}`)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 7, border: 'none', background: 'transparent', cursor: 'pointer', marginBottom: 2, transition: 'background 0.1s' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-elevated)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-              <div style={{ width: 26, height: 26, borderRadius: 6, background: `${agent.color}14`, border: `1px solid ${agent.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: agent.color, flexShrink: 0 }}>
-                {agent.icon}
-              </div>
-              <span style={{ color: 'var(--color-secondary)', fontSize: 13, textAlign: 'left' }}>{agent.name}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* User */}
-        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-elevated)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ color: 'var(--color-secondary)', fontSize: 11, fontWeight: 600 }}>
-                {user?.name?.[0]?.toUpperCase() || 'U'}
-              </span>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name || 'User'}</p>
-              <p style={{ color: 'var(--color-subtle)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email || ''}</p>
-            </div>
-            <button onClick={handleLogout}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-subtle)', padding: 4, display: 'flex', borderRadius: 4, transition: 'color 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-danger)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-subtle)')}>
-              <LogOut size={13} />
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#050505] text-white overflow-hidden flex relative">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-forge/5 blur-[120px] rounded-full" />
       </div>
 
-      {/* Main content */}
-      <div style={{ marginLeft: 220, padding: '48px 40px', maxWidth: 'calc(100% - 220px)' }}>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-
-          <div style={{ marginBottom: 40 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--color-white)', letterSpacing: '-0.02em', marginBottom: 6 }}>
-              Agents
-            </h1>
-            <p style={{ color: 'var(--color-subtle)', fontSize: 13 }}>
-              Select an agent to start a session. All interactions are governed by ForgeOS3.
-            </p>
+      {/* Sidebar - Glassmorphism */}
+      <aside className="w-[280px] flex-shrink-0 border-r border-white/5 bg-black/40 backdrop-blur-2xl flex flex-col z-20">
+        <div className="p-8 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-forge to-indigo-600 flex items-center justify-center">
+              <Zap size={16} fill="white" />
+            </div>
+            <span className="font-bold text-lg tracking-tight">
+              Forge<span className="text-forge">UI</span>3
+            </span>
           </div>
+        </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1 no-scrollbar">
+          <div className="px-4 py-2 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">
+            Dominios Durango
+          </div>
+          {AGENTS.map(agent => (
+            <button key={agent.id} onClick={() => navigate(`/canvas/${agent.domain}`)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/[0.04] border border-transparent hover:border-white/5 transition-all text-left group">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm transition-transform group-hover:scale-110"
+                style={{ background: `${agent.color}15`, border: `1px solid ${agent.color}30`, color: agent.color }}>
+                {agent.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-white/80 group-hover:text-white transition-colors capitalize">{agent.domain.replace('tech', '')}</div>
+                <div className="text-[10px] text-white/30 truncate">{agent.name}</div>
+              </div>
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-6 border-t border-white/5 bg-black/20">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center">
+              <span className="text-sm font-bold text-white/60">{user?.name?.[0]?.toUpperCase()}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white truncate">{user?.name}</p>
+              <button onClick={handleLogout} className="text-[10px] font-bold text-red-500/60 hover:text-red-500 uppercase tracking-widest transition-colors flex items-center gap-1">
+                <LogOut size={10} /> Salir
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto relative z-10 p-12">
+        <div className="max-w-5xl mx-auto">
+          <header className="mb-12">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3 mb-4">
+              <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                Gobernanza Activa
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Sentinel Cloud Sync</span>
+              </div>
+            </motion.div>
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl font-bold tracking-tight mb-4">
+              Dashboard de Agentes
+            </motion.h1>
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-white/40 max-w-lg leading-relaxed">
+              Selecciona un dominio operativo para iniciar una sesión de asistencia gobernada. Cada interacción es auditada en tiempo real por el Council.
+            </motion.p>
+          </header>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {AGENTS.map((agent, i) => (
               <motion.div key={agent.id}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
+                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.1 }}
                 onClick={() => navigate(`/canvas/${agent.domain}`)}
-                style={{ padding: '20px', borderRadius: 12, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', transition: 'border-color 0.15s' }}
-                whileHover={{ y: -2 }}
-                onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.borderColor = 'var(--color-line)')}
-                onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: `${agent.color}12`, border: `1px solid ${agent.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: agent.color }}>
+                className="group relative p-8 rounded-[32px] bg-white/[0.02] border border-white/5 hover:bg-forge/[0.04] hover:border-forge/30 transition-all cursor-pointer overflow-hidden backdrop-blur-sm">
+                <div className="absolute -top-4 -right-4 w-24 h-24 blur-3xl rounded-full opacity-20 transition-opacity group-hover:opacity-40" style={{ background: agent.color }} />
+                
+                <div className="relative z-10">
+                  <div className="w-16 h-16 rounded-[22px] flex items-center justify-center text-3xl mb-8 transition-transform group-hover:scale-110 shadow-2xl"
+                    style={{ background: `${agent.color}15`, border: `1px solid ${agent.color}30`, color: agent.color }}>
                     {agent.icon}
                   </div>
-                  <span style={{ fontSize: 10, color: agent.color, fontFamily: 'monospace', padding: '3px 8px', borderRadius: 4, background: `${agent.color}10`, border: `1px solid ${agent.color}20` }}>
-                    {agent.domain}
-                  </span>
-                </div>
-
-                <p style={{ color: 'var(--color-white)', fontWeight: 500, fontSize: 14, marginBottom: 6 }}>{agent.name}</p>
-                <p style={{ color: 'var(--color-subtle)', fontSize: 12, lineHeight: 1.55, marginBottom: 16 }}>{agent.description}</p>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: agent.color, fontSize: 12, fontWeight: 500 }}>
-                  Open <ArrowRight size={12} />
+                  <h3 className="text-xl font-bold mb-3 group-hover:text-white transition-colors">{agent.name}</h3>
+                  <p className="text-sm text-white/40 mb-8 leading-relaxed line-clamp-3 font-medium">
+                    {agent.description}
+                  </p>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-white/10" style={{ color: agent.color }}>
+                      {agent.domain.replace('tech', ' tech')}
+                    </span>
+                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all shadow-xl">
+                      <ArrowRight size={18} />
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             ))}
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

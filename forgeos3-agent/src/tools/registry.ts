@@ -36,6 +36,18 @@ export const TOOLS: Record<string, ToolDefinition[]> = {
         },
         required: ["patientId", "note"]
       }
+    },
+    {
+      name: "consult_expert",
+      description: "Consults an expert from another domain (agrotech, fintech) to get specialized advice.",
+      input_schema: {
+        type: "object",
+        properties: {
+          expertDomain: { type: "string", enum: ["agrotech", "fintech"] },
+          query:        { type: "string" }
+        },
+        required: ["expertDomain", "query"]
+      }
     }
   ],
   agrotech: [
@@ -62,6 +74,18 @@ export const TOOLS: Record<string, ToolDefinition[]> = {
           quantity:  { type: "string" }
         },
         required: ["fieldId", "treatment"]
+      }
+    },
+    {
+      name: "consult_expert",
+      description: "Consults an expert from another domain (healthtech, fintech) to get specialized advice.",
+      input_schema: {
+        type: "object",
+        properties: {
+          expertDomain: { type: "string", enum: ["healthtech", "fintech"] },
+          query:        { type: "string" }
+        },
+        required: ["expertDomain", "query"]
       }
     }
   ],
@@ -90,6 +114,18 @@ export const TOOLS: Record<string, ToolDefinition[]> = {
           currency:{ type: "string", default: "USD" }
         },
         required: ["from", "to", "amount"]
+      }
+    },
+    {
+      name: "consult_expert",
+      description: "Consults an expert from another domain (healthtech, agrotech) to get specialized advice.",
+      input_schema: {
+        type: "object",
+        properties: {
+          expertDomain: { type: "string", enum: ["healthtech", "agrotech"] },
+          query:        { type: "string" }
+        },
+        required: ["expertDomain", "query"]
       }
     }
   ]

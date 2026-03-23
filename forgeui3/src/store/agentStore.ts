@@ -10,7 +10,7 @@ interface AgentState {
 
   setDomain:   (d: Domain) => void
   addMessage:  (m: Message) => void
-  updateLast:  (content: string) => void
+  updateLast:  (content: string, thoughts?: string, artifacts?: Message['artifacts']) => void
   addGovEvent: (e: GovernanceEvent) => void
   setRunning:  (v: boolean) => void
   setRunId:    (id: string | null) => void
@@ -26,10 +26,18 @@ export const useAgentStore = create<AgentState>((set) => ({
 
   setDomain:   (domain)  => set({ domain }),
   addMessage:  (m)       => set(s => ({ messages:  [...s.messages,  m] })),
-  updateLast:  (content) => set(s => {
+  updateLast:  (content: string, thoughts?: string, artifacts?: Message['artifacts']) => set(s => {
     const msgs = [...s.messages]
-    const last = msgs[msgs.length - 1]
-    if (last) msgs[msgs.length - 1] = { ...last, content, loading: false }
+    const lastIdx = msgs.length - 1
+    if (lastIdx >= 0) {
+      msgs[lastIdx] = { 
+        ...msgs[lastIdx], 
+        content, 
+        loading: false,
+        ...(thoughts !== undefined ? { thoughts } : {}),
+        ...(artifacts !== undefined ? { artifacts } : {}),
+      }
+    }
     return { messages: msgs }
   }),
   addGovEvent: (e)       => set(s => ({ govEvents: [...s.govEvents, e] })),

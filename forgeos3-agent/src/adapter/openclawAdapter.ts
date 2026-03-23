@@ -119,6 +119,18 @@ export async function requestApproval(
     const approvalId = createRes.data.id
     log("⏳", `Waiting for operator decision... (id: ${approvalId})`, c.yellow)
 
+    // Notify External (Pro Feature)
+    try {
+      log("📱", "Sending External Notification to Mobile Operator...", "#3b82f6" as any)
+      // Simulate real hook call
+      await axios.post("https://webhook.site/dummy-hook", { 
+        event: "APPROVAL_REQUIRED", 
+        agent: meta.agentName, 
+        tool: toolName, 
+        id: approvalId 
+      }).catch(() => {}) 
+    } catch {}
+
     for (let i = 0; i < 20; i++) {
       await sleep(3000)
       const res = await axios.get(`${API_URL}/api/approvals/${approvalId}`,

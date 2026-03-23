@@ -1,54 +1,63 @@
-interface Props { onExampleClick: (ex: string) => void; color: string }
+import { motion } from 'framer-motion'
+import { Landmark, ShieldAlert, CreditCard, Activity } from 'lucide-react'
+
+interface Props { onExampleClick: (ex: string) => void }
 
 const ACCOUNTS = [
-  { id: 'ACC-9921', risk: 88, status: 'High risk'  },
-  { id: 'ACC-3341', risk: 12, status: 'Clean'       },
-  { id: 'ACC-7782', risk: 45, status: 'Monitoring'  },
+  { id: 'ACC-9921', risk: 88, status: 'Alto Riesgo', icon: ShieldAlert },
+  { id: 'ACC-3341', risk: 12, status: 'Protegido',  icon: CreditCard },
+  { id: 'ACC-7782', risk: 45, status: 'Monitoreo',  icon: Activity },
 ]
 
 const EXAMPLES = [
-  'Analyze Q1 transactions for ACC-9921',
-  'Flag suspicious activity last 30 days',
-  'Generate fraud risk report',
-  'Risk score for transaction TXN-4821',
+  'Analizar transacciones Q1 ACC-9921',
+  'Detectar actividad sospechosa 30d',
+  'Generar reporte de riesgo fraudulento',
+  'Score de riesgo transacción TXN-4821',
 ]
 
-export function FinCanvas({ onExampleClick, color }: Props) {
+export function FinCanvas({ onExampleClick }: Props) {
   return (
-    <div style={{ padding: 16 }}>
-      <p style={{ color: 'var(--subtle)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 12 }}>
-        ACCOUNT RISK
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 20 }}>
-        {ACCOUNTS.map(a => {
-          const rc = a.risk > 70 ? '#ef4444' : a.risk > 40 ? '#f5a623' : '#00d084'
-          return (
-            <div key={a.id} style={{ padding: '10px 12px', borderRadius: 6, background: 'var(--elevated)', border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ color: 'var(--primary)', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>{a.id}</span>
-                <span style={{ color: rc, fontSize: 11 }}>{a.status}</span>
-              </div>
-              <div style={{ height: 2, borderRadius: 1, background: 'var(--border)' }}>
-                <div style={{ height: '100%', borderRadius: 1, width: `${a.risk}%`, background: rc }} />
-              </div>
-            </div>
-          )
-        })}
+    <div className="p-6 space-y-8 bg-transparent">
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
+          <Landmark size={10} /> Riesgo Financiero
+        </h3>
+        <div className="space-y-4">
+          {ACCOUNTS.map((a, i) => {
+            const rc = a.risk > 70 ? '#ef4444' : a.risk > 40 ? '#f5a623' : '#10b981'
+            return (
+              <motion.div key={a.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+                className="p-4 rounded-[20px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all group">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-mono text-white/40">
+                      {a.id.split('-')[1]}
+                    </div>
+                    <span className="text-xs font-bold text-white/80">{a.status}</span>
+                  </div>
+                  <span className="text-[10px] font-bold font-mono" style={{ color: rc }}>{a.risk}%</span>
+                </div>
+                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${a.risk}%` }} transition={{ duration: 1, delay: 0.5 }}
+                    className="h-full rounded-full" style={{ background: rc }} />
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
       </div>
 
-      <p style={{ color: 'var(--subtle)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>EXAMPLES</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 20 }}>
-        {EXAMPLES.map(ex => (
-          <button key={ex} onClick={() => onExampleClick(ex)}
-            style={{ textAlign: 'left', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--secondary)', fontSize: 12, cursor: 'pointer', lineHeight: 1.4 }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--line)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-            "{ex}"
-          </button>
-        ))}
-      </div>
-      <div style={{ padding: '10px 12px', borderRadius: 6, border: `1px solid ${color}20`, background: `${color}08`, color: `${color}bb`, fontSize: 11, lineHeight: 1.5 }}>
-        Transfer lock: <strong>execute_transfer</strong> frozen until human authorization
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Consultas Durango</h3>
+        <div className="grid gap-2">
+          {EXAMPLES.map(ex => (
+            <button key={ex} onClick={() => onExampleClick(ex)}
+              className="text-left p-3 rounded-xl border border-white/5 bg-transparent hover:bg-white/[0.03] hover:border-white/10 transition-all text-[11px] text-white/50 leading-relaxed font-medium">
+              "{ex}"
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )

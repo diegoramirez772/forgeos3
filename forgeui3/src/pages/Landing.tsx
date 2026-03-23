@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Shield, Zap, Lock, Eye } from 'lucide-react'
+import { ArrowRight, Shield, Zap } from 'lucide-react'
 import { AGENTS } from '../types'
 
 const fade = (delay = 0) => ({
@@ -13,122 +13,116 @@ export function Landing() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-forge/30 selection:text-forge-light overflow-x-hidden relative">
+      {/* Background Decor */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-forge/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[10%] right-[-5%] w-[30%] h-[30%] bg-emerald-500/5 blur-[100px] rounded-full" />
+      </div>
 
       {/* Nav */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 50, borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg)', backdropFilter: 'blur(12px)' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--color-forge)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>F</span>
+      <nav className="sticky top-0 z-50 border-b border-white/5 bg-black/20 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-forge to-indigo-600 flex items-center justify-center shadow-lg shadow-forge/20">
+              <Zap size={16} className="text-white" fill="currentColor" />
             </div>
-            <span style={{ fontWeight: 600, color: 'var(--color-white)', letterSpacing: '-0.02em', fontSize: 15 }}>
-              Forge<span style={{ color: 'var(--color-forge)' }}>UI</span>3
+            <span className="font-bold text-lg tracking-tight">
+              Forge<span className="text-forge">UI</span>3
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => navigate('/signin')} className="ui-btn-ghost" style={{ padding: '7px 14px', fontSize: 13 }}>
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate('/signin')} className="text-sm font-medium text-white/60 hover:text-white transition-colors">
               Sign in
             </button>
-            <button onClick={() => navigate('/signup')} className="ui-btn-primary" style={{ padding: '7px 14px', fontSize: 13 }}>
+            <button onClick={() => navigate('/signup')} 
+              className="px-5 py-2 rounded-xl bg-white text-black text-sm font-bold hover:bg-white/90 transition-all shadow-xl shadow-white/5">
               Get started
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '96px 24px 80px', textAlign: 'center' }}>
-        <motion.div {...fade(0)}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 99, border: '1px solid var(--color-border)', marginBottom: 28 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
-            <span style={{ color: 'var(--color-secondary)', fontSize: 12 }}>OpenClaw · Governed by ForgeOS3</span>
-          </div>
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-20 px-6 text-center">
+        <motion.div {...fade(0)} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-8">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Durango Hackathon 2025 · Edition</span>
         </motion.div>
 
-        {/* Orb */}
-        <motion.div {...fade(0.05)} style={{ display: 'flex', justifyContent: 'center', marginBottom: 36 }}>
-          <div style={{ position: 'relative', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="orb-idle" style={{ position: 'absolute', width: 110, height: 110, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)' }} />
-            <div className="orb-active" style={{ width: 36, height: 36, borderRadius: '50%', background: 'radial-gradient(circle, #7c3aed, rgba(124,58,237,0.5))', boxShadow: '0 0 32px rgba(124,58,237,0.25)' }} />
-          </div>
-        </motion.div>
-
-        <motion.h1 {...fade(0.1)} style={{ fontSize: 48, fontWeight: 600, color: 'var(--color-white)', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 20 }}>
-          The workspace for<br />
-          <span style={{ color: 'var(--color-secondary)' }}>governed AI agents</span>
+        <motion.h1 {...fade(0.1)} className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.05]">
+          Autonomous Agents.<br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white/40 via-white to-white/40">Gobernanza de Elite.</span>
         </motion.h1>
 
-        <motion.p {...fade(0.15)} style={{ color: 'var(--color-subtle)', fontSize: 16, lineHeight: 1.65, maxWidth: 480, margin: '0 auto 36px' }}>
-          ForgeUI3 is where users interact with AI agents built on OpenClaw. Every tool call evaluated, every action audited by ForgeOS3.
+        <motion.p {...fade(0.15)} className="max-w-xl mx-auto text-lg text-white/40 mb-10 leading-relaxed">
+          Interactúa con la nueva generación de agentes OpenClaw protegidos por la infraestructura de ForgeOS3. Seguridad, auditoría y control total.
         </motion.p>
 
-        <motion.div {...fade(0.2)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-          <button onClick={() => navigate('/signup')} className="ui-btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontSize: 14 }}>
-            Start for free <ArrowRight size={14} />
-          </button>
-          <button onClick={() => navigate('/gallery')} className="ui-btn-ghost"
-            style={{ padding: '10px 20px', fontSize: 14 }}>
-            View agents
+        <motion.div {...fade(0.2)} className="flex items-center justify-center gap-4">
+          <button onClick={() => navigate('/gallery')} 
+            className="group px-8 py-4 rounded-2xl bg-gradient-to-r from-forge to-indigo-600 font-bold flex items-center gap-3 hover:scale-105 transition-all shadow-2xl shadow-forge/20">
+            Explorar Dominios <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </motion.div>
-      </div>
+      </section>
 
-      {/* Features */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 24px 80px' }}>
-        <motion.div {...fade(0.25)} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {[
-            { icon: Shield, label: 'Policy Engine',    sub: 'Every tool evaluated',   color: '#7c3aed' },
-            { icon: Eye,    label: 'Full Audit Trail',  sub: 'Every action logged',    color: '#16a34a' },
-            { icon: Lock,   label: 'Human Approvals',   sub: 'Sensitive ops reviewed', color: '#d97706' },
-            { icon: Zap,    label: 'Loop Guard',         sub: 'Runaway protection',     color: '#dc2626' },
-          ].map(({ icon: Icon, label, sub, color }) => (
-            <div key={label} style={{ padding: '16px', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12, background: `${color}14`, border: `1px solid ${color}22` }}>
-                <Icon size={14} style={{ color }} />
+      {/* Domain Selection Grid */}
+      <section className="max-w-6xl mx-auto px-6 py-24 border-t border-white/5">
+        <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-6">
+          <div className="text-left">
+            <h2 className="text-3xl font-bold mb-3">Dominios Especializados</h2>
+            <p className="text-white/40 max-w-md">Selecciona un ecosistema optimizado para resolver problemas reales en Durango.</p>
+          </div>
+          <div className="flex items-center gap-4 text-xs font-bold text-white/30 uppercase tracking-widest bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+            <Shield size={12} className="text-emerald-500" /> Powered by Sentinel Governance
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {AGENTS.map((agent, i) => (
+            <motion.div key={agent.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              onClick={() => navigate('/signup')}
+              className="group relative p-8 rounded-[32px] bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] hover:border-white/10 transition-all cursor-pointer overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <span className="text-6xl">{agent.icon}</span>
               </div>
-              <p style={{ color: 'var(--color-primary)', fontWeight: 500, fontSize: 13, marginBottom: 2 }}>{label}</p>
-              <p style={{ color: 'var(--color-subtle)', fontSize: 12 }}>{sub}</p>
-            </div>
-          ))}
-        </motion.div>
-      </div>
-
-      {/* Agents preview */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 24px 100px' }}>
-        <motion.div {...fade(0.3)}>
-          <p style={{ color: 'var(--color-subtle)', fontSize: 12, letterSpacing: '0.08em', marginBottom: 20, textTransform: 'uppercase' }}>
-            Available agents
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {AGENTS.map(agent => (
-              <div key={agent.id} onClick={() => navigate('/signup')}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surface)', cursor: 'pointer', transition: 'border-color 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--color-line)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--color-border)')}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: `${agent.color}12`, border: `1px solid ${agent.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: agent.color, flexShrink: 0 }}>
+              <div className="relative z-10">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-2xl`}
+                  style={{ background: `${agent.color}15`, border: `1px solid ${agent.color}30`, color: agent.color }}>
                   {agent.icon}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ color: 'var(--color-primary)', fontWeight: 500, fontSize: 13 }}>{agent.name}</p>
-                  <p style={{ color: 'var(--color-subtle)', fontSize: 12 }}>{agent.tagline}</p>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-forge-light transition-colors">{agent.name}</h3>
+                <p className="text-sm text-white/40 mb-6 leading-relaxed line-clamp-2">{agent.description}</p>
+                <div className="flex items-center justify-between pt-6 border-t border-white/5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: agent.color }}>{agent.domain}</span>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                    <ArrowRight size={14} />
+                  </div>
                 </div>
-                <span style={{ color: agent.color, fontSize: 11, fontFamily: 'monospace' }}>{agent.domain}</span>
-                <ArrowRight size={14} style={{ color: 'var(--color-muted)' }} />
               </div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
 
       {/* Footer */}
-      <div style={{ borderTop: '1px solid var(--color-border)', padding: '20px 24px' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--color-muted)', fontSize: 12 }}>ForgeUI3 · TEAM GPT · Durango 2025</span>
-          <span style={{ color: 'var(--color-muted)', fontSize: 12 }}>Built on ForgeOS3 + OpenClaw</span>
+      <footer className="py-12 px-6 border-t border-white/5">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 opacity-40 hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-2">
+            <Zap size={14} className="text-forge" />
+            <span className="text-xs font-bold uppercase tracking-widest">ForgeOS3 Ecosystem</span>
+          </div>
+          <p className="text-[10px] uppercase font-bold tracking-[0.2em]">Build with Passion for Durango Hackathon 2025</p>
         </div>
-      </div>
+      </footer>
     </div>
   )
 }

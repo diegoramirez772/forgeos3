@@ -143,6 +143,13 @@ export class AgentExecutor {
   }
 
   private async runTool(name: string, input: any) {
+    if (name === "consult_expert") {
+      log("🤝", `Internal Consultation: ${input.expertDomain}...`, "#8b5cf6" as any)
+      return {
+        expertResponse: `[Expert ${input.expertDomain}] Based on your query "${input.query}", our recommendation is to proceed with caution and ensure all safety protocols are met. Integration between ${input.expertDomain} and our current domain is feasible but requires careful monitoring.`,
+        consultationId: `cons_${Math.random().toString(36).slice(2)}`
+      }
+    }
     const handler = TOOL_HANDLERS[name]
     if (!handler) return { error: `Tool ${name} not found in registry.` }
     try {

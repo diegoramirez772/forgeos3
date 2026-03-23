@@ -1,50 +1,59 @@
+import { motion } from 'framer-motion'
+import { Activity, Clipboard, UserPlus, ShieldPlus } from 'lucide-react'
+
 interface Props { onExampleClick: (ex: string) => void; color: string }
 
 const STATS = [
-  { label: 'Patients today',  value: '24' },
-  { label: 'Pending reviews', value: '7'  },
-  { label: 'Forms processed', value: '142'},
+  { label: 'Pacientes hoy',  value: '24', icon: UserPlus },
+  { label: 'Pendientes',     value: '7',  icon: Clipboard  },
+  { label: 'Procesados',     value: '142',icon: Activity },
 ]
 
 const EXAMPLES = [
-  'Summarize patient intake form #4821',
-  'Create follow-up checklist for post-op',
-  'Review: fever 38.5°C, fatigue, 3 days',
-  'Discharge instructions for diabetic patient',
+  'Resumir formulario ingreso #4821',
+  'Checklist seguimiento post-op',
+  'Revisión: fiebre 38.5°C, 3 días',
+  'Instrucciones de alta diabético',
 ]
 
 export function HealthCanvas({ onExampleClick, color }: Props) {
   return (
-    <div style={{ padding: 16 }}>
-      <p style={{ color: 'var(--subtle)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 12 }}>
-        CLINICAL CONTEXT
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 20 }}>
-        {STATS.map(s => (
-          <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'var(--elevated)', border: '1px solid var(--border)' }}>
-            <span style={{ color: 'var(--subtle)', fontSize: 12 }}>{s.label}</span>
-            <span style={{ color, fontSize: 13, fontWeight: 500 }}>{s.value}</span>
-          </div>
-        ))}
+    <div className="p-6 space-y-8 bg-transparent">
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
+          <Activity size={10} /> Contexto Clínico
+        </h3>
+        <div className="space-y-4">
+          {STATS.map((s, i) => (
+            <motion.div key={s.label} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+              className="flex justify-between items-center p-4 rounded-[20px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all">
+              <div className="flex items-center gap-3">
+                <s.icon size={14} className="text-white/20" />
+                <span className="text-[12px] text-white/40 font-medium">{s.label}</span>
+              </div>
+              <span className="text-sm font-bold text-white/80" style={{ color }}>{s.value}</span>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      <p style={{ color: 'var(--subtle)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>
-        EXAMPLES
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 20 }}>
-        {EXAMPLES.map(ex => (
-          <button key={ex} onClick={() => onExampleClick(ex)}
-            style={{ textAlign: 'left', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--secondary)', fontSize: 12, cursor: 'pointer', lineHeight: 1.4, transition: 'border-color 0.1s' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--line)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-            "{ex}"
-          </button>
-        ))}
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Sugerencias Médicas</h3>
+        <div className="grid gap-2">
+          {EXAMPLES.map(ex => (
+            <button key={ex} onClick={() => onExampleClick(ex)}
+              className="text-left p-3 rounded-xl border border-white/5 bg-transparent hover:bg-white/[0.03] hover:border-white/10 transition-all text-[11px] text-white/50 leading-relaxed font-medium">
+              "{ex}"
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div style={{ padding: '10px 12px', borderRadius: 6, border: `1px solid ${color}20`, background: `${color}08`, color: `${color}bb`, fontSize: 11, lineHeight: 1.5 }}>
-        Safe mode: <strong>diagnose</strong> + <strong>write_record</strong> require approval
+      <div className="p-4 rounded-2xl bg-sky-500/5 border border-sky-500/10 flex items-start gap-3">
+        <ShieldPlus size={14} className="text-sky-500 mt-0.5" />
+        <p className="text-[10px] leading-relaxed text-sky-500/60 font-bold uppercase tracking-wider">
+          Protocolo Seguro: diagnóstico y registros requieren validación humana
+        </p>
       </div>
     </div>
   )

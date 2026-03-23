@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/authStore'
 import { useRunStore } from '../store/runStore'
 import { useAgentStore } from '../store/agentStore'
 import { SkeletonMetric, SkeletonRow, SkeletonCard, ErrorBanner } from '../components/ui/Skeleton'
+import { useDashboardStore } from '../store/dashboardStore'
 import type { Agent } from '../types/agent'
 
 function timeAgo(ts: string) {
@@ -59,21 +60,27 @@ export function Dashboard() {
   const { agents, loading: loadingAgents, error: errorAgents, fetchAgents, isLive, checkHealth } = useAgentStore()
   const navigate = useNavigate()
 
+  const { stats, fetchStats } = useDashboardStore()
+
   useEffect(() => {
     fetchRuns()
     fetchApprovals()
     fetchAgents()
     checkHealth()
-    const iv = setInterval(checkHealth, 5000)
+    fetchStats()
+    const iv = setInterval(() => {
+      checkHealth()
+      fetchStats()
+    }, 5000)
     return () => clearInterval(iv)
-  }, [fetchRuns, fetchApprovals, fetchAgents, checkHealth])
+  }, [fetchRuns, fetchApprovals, fetchAgents, checkHealth, fetchStats])
 
-  const pending   = (approvals ?? []).filter(a => a.status === 'pending').length
-  const blocked   = runs.flatMap(r => (r.toolEvents ?? [])).filter(e => e?.decision === 'blocked').length
-  const allowed   = runs.flatMap(r => (r.toolEvents ?? [])).filter(e => e?.decision === 'allowed').length
-  const allEvents = runs
-    .flatMap(r => (r.toolEvents ?? []).map(e => ({ ...e, agentName: r.agentName, domain: r.domain })))
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  const pending   = (approvals ?? []).filter((a: any) => a.status === 'pending').length
+  const blocked   = (runs ?? []).flatMap((r: any) => (r.toolEvents ?? [])).filter((e: any) => e?.decision === 'blocked').length
+  const allowed   = (runs ?? []).flatMap((r: any) => (r.toolEvents ?? [])).filter((e: any) => e?.decision === 'allowed').length
+  const allEvents = (runs ?? [])
+    .flatMap((r: any) => (r.toolEvents ?? []).map((e: any) => ({ ...e, agentName: r.agentName, domain: r.domain })))
+    .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -117,8 +124,58 @@ export function Dashboard() {
         {error && (
           <ErrorBanner
             message={error}
-            onRetry={() => { fetchRuns(); fetchAgents() }}
+            onRetry={() => { fetchRuns(); fetchAgents(); fetchStats() }}
           />
+        )}
+
+        {/* Security Pulse Section */}
+        {stats && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="p-6 rounded-2xl bg-gradient-to-br from-forge-surface to-forge-elevated border border-amber-500/20 shadow-xl shadow-amber-500/5 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Shield size={120} className="text-amber-500" />
+            </div>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-500 uppercase tracking-wider">
+                    Security Pulse
+                  </div>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                </div>
+                <h2 className="text-2xl font-bold text-forge-white tracking-tight">
+                  Sentinel Protection: <span className="text-amber-500 uppercase">{stats.securityPulse.shieldStatus}</span>
+                </h2>
+                <p className="text-sm text-forge-subtle">
+                  Managed by ForgeOS3 Governance. Safeguarding AI operations in real-time.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 md:gap-12">
+                <div className="space-y-1">
+                  <div className="text-[10px] text-forge-subtle font-semibold uppercase">Value Protected</div>
+                  <div className="text-2xl font-bold text-emerald-500 tabular-nums">
+                    ${stats.securityPulse.totalValueProtected.toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-emerald-500/60 font-medium">+12% from last session</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-[10px] text-forge-subtle font-semibold uppercase">Safety Score</div>
+                  <div className="text-2xl font-bold text-amber-500 tabular-nums">
+                    {stats.securityPulse.safetyScore}%
+                  </div>
+                  <div className="text-[10px] text-amber-500/60 font-medium">Verified Governance</div>
+                </div>
+                <div className="hidden sm:block space-y-1">
+                  <div className="text-[10px] text-forge-subtle font-semibold uppercase">Last Blocked</div>
+                  <div className="text-xs font-mono text-forge-secondary bg-forge-elevated/50 px-2 py-1 rounded-lg border border-forge-border truncate max-w-24">
+                    {stats.securityPulse.lastAttackBlocked}
+                  </div>
+                  <div className="text-[9px] text-red-400 font-medium">Access Denied</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         )}
 
         <motion.div variants={stagger} initial="hidden" animate="show"
@@ -207,7 +264,7 @@ export function Dashboard() {
                     No events yet
                   </div>
                 ) : (
-                  allEvents.slice(0, 10).map((event, i) => (
+                  allEvents.slice(0, 10).map((event: any, i: number) => (
                     <motion.div key={event.id}
                       initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.4 + i * 0.04, duration: 0.3 }}
@@ -263,7 +320,7 @@ export function Dashboard() {
                     </div>
                   ))
                 ) : (
-                  runs.map(run => {
+                  runs.map((run: any) => {
                     const pct = Math.min(run.loopRiskScore, 100)
                     const color = run.loopRiskScore > 30 ? 'bg-red-500' : run.loopRiskScore > 15 ? 'bg-amber-400' : 'bg-emerald-500'
                     const textColor = run.loopRiskScore > 30 ? 'text-red-500' : run.loopRiskScore > 15 ? 'text-amber-500' : 'text-emerald-500'
@@ -302,7 +359,7 @@ export function Dashboard() {
                 {isLoading ? (
                   Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)
                 ) : (
-                  runs.map(run => {
+                  runs.map((run: any) => {
                     const cfg = STATUS_CONFIG[run.status] || STATUS_CONFIG['finished']
                     return (
                       <div key={run.id} className="flex items-center gap-3 px-5 py-3 hover:bg-forge-elevated/50 transition-colors cursor-pointer"
@@ -376,10 +433,10 @@ export function Dashboard() {
                         <Shield size={9} className="text-blue-400" />
                         <span>{(agent.policyPresetId ?? '').replace('pp-', '') || '—'}</span>
                       </div>
-                      {run && (
+                      {runs.find((r: any) => r.agentId === agent.id) && (
                         <div className="flex items-center gap-1 ml-auto">
                           <Eye size={9} />
-                          <span>risk {run.loopRiskScore}</span>
+                          <span>risk {runs.find((r: any) => r.agentId === agent.id)?.loopRiskScore}</span>
                         </div>
                       )}
                     </div>

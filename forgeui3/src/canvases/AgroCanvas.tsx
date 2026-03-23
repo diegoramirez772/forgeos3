@@ -1,52 +1,68 @@
-interface Props { onExampleClick: (ex: string) => void; color: string }
+import { motion } from 'framer-motion'
+import { Leaf, Droplets, TrendingUp, ShieldCheck } from 'lucide-react'
+
+interface Props { onExampleClick: (ex: string) => void }
 
 const FIELDS = [
-  { id: '#22', status: 'Needs treatment', risk: 'high',   pct: 85 },
-  { id: '#8',  status: 'Healthy',         risk: 'low',    pct: 12 },
-  { id: '#15', status: 'Monitoring',      risk: 'medium', pct: 44 },
+  { id: '#22', status: 'Tratamiento', risk: 'high',   pct: 85, icon: Leaf },
+  { id: '#08', status: 'Saludable',   risk: 'low',    pct: 12, icon: Droplets },
+  { id: '#15', status: 'Monitoreo',  risk: 'medium', pct: 44, icon: TrendingUp },
 ]
-const RISK_COLOR: Record<string, string> = { high: '#ef4444', medium: '#f5a623', low: '#00d084' }
+const RISK_COLOR: Record<string, string> = { high: '#ef4444', medium: '#f5a623', low: '#10b981' }
 
 const EXAMPLES = [
-  'Analyze crop sensor data for field #22',
-  'Predict yield for the north sector',
-  'Soil moisture 34% — recommend treatment',
-  'Compare field #8 vs last month',
+  'Analizar sensores del campo #22',
+  'Predecir cosecha sector norte',
+  'Nivel de humedad 34% — recomendar',
+  'Comparar campo #08 vs mes pasado',
 ]
 
-export function AgroCanvas({ onExampleClick, color }: Props) {
+export function AgroCanvas({ onExampleClick }: Props) {
   return (
-    <div style={{ padding: 16 }}>
-      <p style={{ color: 'var(--subtle)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 12 }}>
-        FIELD STATUS
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 20 }}>
-        {FIELDS.map(f => (
-          <div key={f.id} style={{ padding: '10px 12px', borderRadius: 6, background: 'var(--elevated)', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ color: 'var(--primary)', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>{f.id}</span>
-              <span style={{ color: RISK_COLOR[f.risk], fontSize: 11 }}>{f.status}</span>
-            </div>
-            <div style={{ height: 2, borderRadius: 1, background: 'var(--border)' }}>
-              <div style={{ height: '100%', borderRadius: 1, width: `${f.pct}%`, background: RISK_COLOR[f.risk], transition: 'width 0.5s' }} />
-            </div>
-          </div>
-        ))}
+    <div className="p-6 space-y-8 bg-transparent">
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-6 flex items-center gap-2">
+          <Leaf size={10} /> Monitoreo de Campo
+        </h3>
+        <div className="space-y-4">
+          {FIELDS.map((f, i) => (
+            <motion.div key={f.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+              className="p-4 rounded-[20px] bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-all group">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-mono text-white/40">
+                    {f.id}
+                  </div>
+                  <span className="text-xs font-bold text-white/80">{f.status}</span>
+                </div>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: RISK_COLOR[f.risk] }} />
+              </div>
+              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${f.pct}%` }} transition={{ duration: 1, delay: 0.5 }}
+                  className="h-full rounded-full" style={{ background: RISK_COLOR[f.risk] }} />
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      <p style={{ color: 'var(--subtle)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.1em', marginBottom: 8 }}>EXAMPLES</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 20 }}>
-        {EXAMPLES.map(ex => (
-          <button key={ex} onClick={() => onExampleClick(ex)}
-            style={{ textAlign: 'left', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--secondary)', fontSize: 12, cursor: 'pointer', lineHeight: 1.4 }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--line)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-            "{ex}"
-          </button>
-        ))}
+      <div>
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-4">Sugerencias Durango</h3>
+        <div className="grid gap-2">
+          {EXAMPLES.map((ex) => (
+            <button key={ex} onClick={() => onExampleClick(ex)}
+              className="text-left p-3 rounded-xl border border-white/5 bg-transparent hover:bg-white/[0.03] hover:border-white/10 transition-all text-[11px] text-white/50 leading-relaxed font-medium">
+              "{ex}"
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ padding: '10px 12px', borderRadius: 6, border: `1px solid ${color}20`, background: `${color}08`, color: `${color}bb`, fontSize: 11, lineHeight: 1.5 }}>
-        Safe mode: <strong>apply_treatment</strong> requires approval before any field action
+
+      <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex items-start gap-3">
+        <ShieldCheck size={14} className="text-emerald-500 mt-0.5" />
+        <p className="text-[10px] leading-relaxed text-emerald-500/60 font-bold uppercase tracking-wider">
+          Gobernanza Activa: apply_treatment requiere firma del Council
+        </p>
       </div>
     </div>
   )

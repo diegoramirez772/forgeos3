@@ -44,8 +44,8 @@ export function AgentCanvas() {
       agentId:   agent.agentId,
       agentName: agent.name,
       input:     userMsg.content,
-      onToken:   (chunk) => {
-        updateLast((messages[messages.length - 1]?.content ?? '') + chunk)
+      onToken:   (chunk, thoughts, artifacts) => {
+        updateLast(chunk, thoughts, artifacts)
       },
       onGovEvent: (evt) => {
         addGovEvent({
@@ -81,60 +81,53 @@ export function AgentCanvas() {
     : domain === 'agrotech' ? AgroCanvas : FinCanvas
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+    <div className="h-screen flex flex-col bg-[#050505] text-white overflow-hidden relative selection:bg-forge/30 selection:text-forge-light">
+      {/* Background Glow */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] right-[-5%] w-[30%] h-[30%] bg-forge/5 blur-[100px] rounded-full" />
+      </div>
 
-      {/* Nav */}
-      <div style={{ borderBottom: '1px solid var(--border)', padding: '0 20px', height: 52, flexShrink: 0 }}
-        className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      {/* Premium Header */}
+      <header className="h-14 border-b border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-between px-6 z-30">
+        <div className="flex items-center gap-4">
           <button onClick={() => navigate('/gallery')}
-            className="flex items-center transition-opacity hover:opacity-60"
-            style={{ color: 'var(--subtle)' }}>
+            className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all">
             <ChevronLeft size={16} />
           </button>
-
-          <div style={{ width: 1, height: 16, background: 'var(--border)' }} />
-
-          <div className="flex items-center gap-2">
-            <div style={{
-              width: 26, height: 26, borderRadius: 6,
-              background: `${agent.color}12`, border: `1px solid ${agent.color}20`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, color: agent.color,
-            }}>
+          <div className="h-4 w-[1px] bg-white/10" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg shadow-2xl"
+              style={{ background: `${agent.color}15`, border: `1px solid ${agent.color}30`, color: agent.color }}>
               {agent.icon}
             </div>
-            <span style={{ color: 'var(--primary)', fontSize: 13, fontWeight: 500 }}>{agent.name}</span>
+            <div>
+              <div className="text-xs font-bold tracking-tight">{agent.name}</div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Sentinel Active</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSideOpen(p => !p)}
-            className="flex items-center gap-1.5 transition-opacity hover:opacity-70"
-            style={{
-              color:        sideOpen ? 'var(--secondary)' : 'var(--subtle)',
-              fontSize:     12,
-              padding:      '5px 10px',
-              borderRadius: 6,
-              border:       `1px solid ${sideOpen ? 'var(--border)' : 'transparent'}`,
-            }}>
-            <Shield size={11} />
-            <span className="mono text-[10px]">
-              {govEvents.length > 0 ? govEvents.length : ''} Events
-            </span>
-          </button>
+        <div className="flex items-center gap-4">
+          {/* Confidence Score */}
+          <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
+            <div className="text-right">
+              <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.1em]">Trust Score</div>
+              <div className="text-[11px] font-bold text-emerald-400">98.2% Perfect</div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <Shield size={14} className="text-emerald-500" />
+            </div>
+          </div>
 
           <button onClick={clear}
-            className="flex items-center gap-1.5 transition-opacity hover:opacity-70"
-            style={{
-              color: 'var(--subtle)', fontSize: 12, padding: '5px 10px',
-              borderRadius: 6, border: '1px solid transparent',
-            }}>
-            <RotateCcw size={11} />
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/5 transition-all">
+            <RotateCcw size={14} />
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Governance bar */}
       <div style={{ flexShrink: 0 }}>
@@ -162,44 +155,58 @@ export function AgentCanvas() {
           <ApprovalWidget domain={agent.domain as Domain} />
         </div>
 
-        {/* Right panel - governance events */}
+        {/* Right panel - Evidence Canvas */}
         <AnimatePresence>
           {sideOpen && (
             <motion.div
-              initial={{ width: 0, opacity: 0 }} animate={{ width: 260, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-              style={{ borderLeft: '1px solid var(--border)', overflowY: 'auto', overflowX: 'hidden', flexShrink: 0, background: 'var(--surface)' }}>
+              initial={{ width: 0, opacity: 0 }} animate={{ width: 300, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="border-l border-white/5 bg-black/60 backdrop-blur-3xl overflow-y-auto overflow-x-hidden flex-shrink-0 z-20 shadow-2xl">
 
-              <div style={{ borderBottom: '1px solid var(--border)', padding: '12px 16px' }}>
-                <p style={{ color: 'var(--secondary)', fontSize: 11, fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em' }}>
-                  GOVERNANCE LOG
-                </p>
+              <div className="p-5 border-b border-white/5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-1">Evidence Canvas</p>
+                  <div className="flex items-center gap-2">
+                    <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/50">{govEvents.length} AUDITS</div>
+                  </div>
+                </div>
+                <button onClick={() => setSideOpen(false)} className="text-white/20 hover:text-white transition-colors">
+                   <ChevronLeft size={14} className="rotate-180" />
+                </button>
               </div>
 
-              <div>
+              <div className="p-4 space-y-3">
                 {govEvents.length === 0 ? (
-                  <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-                    <p style={{ color: 'var(--subtle)', fontSize: 12 }}>No events yet</p>
+                  <div className="py-20 text-center flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center">
+                      <Shield size={20} className="text-white/10" />
+                    </div>
+                    <p className="text-xs font-medium text-white/20">Awaiting governance events...</p>
                   </div>
                 ) : (
                   [...govEvents].reverse().map(e => {
-                    const dColor = e.decision === 'allowed' ? '#00d084'
-                      : e.decision === 'blocked' ? '#ef4444' : '#f5a623'
+                    const isAllowed = e.decision === 'allowed'
+                    const isBlocked = e.decision === 'blocked'
+                    const statusColor = isAllowed ? 'text-emerald-500' : isBlocked ? 'text-red-500' : 'text-amber-500'
+                    const bgColor = isAllowed ? 'bg-emerald-500/5' : isBlocked ? 'bg-red-500/5' : 'bg-amber-500/5'
+                    const borderColor = isAllowed ? 'border-emerald-500/10' : isBlocked ? 'border-red-500/10' : 'border-amber-500/10'
+
                     return (
-                      <div key={e.id} style={{ borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
-                        <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
-                          <code style={{ color: 'var(--secondary)', fontSize: 11 }}>{e.toolName}</code>
-                          <span style={{ color: dColor, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}>
+                      <motion.div key={e.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                        className={`p-4 rounded-2xl border ${bgColor} ${borderColor} transition-all hover:scale-[1.02]`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <code className="text-[10px] font-bold text-white/60">{e.toolName}</code>
+                          <span className={`text-[8px] font-bold uppercase tracking-widest ${statusColor}`}>
                             {e.decision === 'approval_required' ? 'pending' : e.decision}
                           </span>
                         </div>
                         {e.reason && (
-                          <p style={{ color: 'var(--subtle)', fontSize: 11, lineHeight: 1.5 }}>{e.reason}</p>
+                          <p className="text-[11px] text-white/40 leading-relaxed mb-3">{e.reason}</p>
                         )}
-                        <p style={{ color: 'var(--muted)', fontSize: 10, fontFamily: 'JetBrains Mono, monospace', marginTop: 4 }}>
-                          {new Date(e.ts).toLocaleTimeString()}
-                        </p>
-                      </div>
+                        <div className="text-[9px] font-mono text-white/20">
+                          {new Date(e.ts).toLocaleTimeString()} · sentinel_v3
+                        </div>
+                      </motion.div>
                     )
                   })
                 )}

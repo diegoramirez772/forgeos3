@@ -18,7 +18,7 @@ dashboardRouter.get('/stats', async (_req, res) => {
       supabase.from('agent_runs').select('status, loop_risk_score, domain'),
 
       // Tool events decisions
-      supabase.from('tool_events').select('decision, risk_score'),
+      supabase.from('tool_events').select('decision, risk_score, tool_name'),
 
       // Approvals by status
       supabase.from('approval_requests').select('status, domain, created_at'),
@@ -69,25 +69,44 @@ dashboardRouter.get('/stats', async (_req, res) => {
       return acc
     }, {})
 
-    res.json({
-      // Core metrics
-      totalRuns,
-      activeAgents,
-      pendingApprovals,
-      totalBlocked,
-      totalAllowed,
-      totalApprovalRequired: totalApproval,
-      avgRiskScore,
-      highRiskRuns,
+      // Security Pulse (Pro)
+      const totalValueProtected = toolEvents
+        .filter(e => e.decision === 'blocked')
+        .reduce((sum, e) => {
+          // If fintech transfer, use the amount from the input payload
+          const input = (e as any).input || {}
+          if (input.amount) return sum + Number(input.amount)
+          // Default savings for other blocked malicious actions
+          return sum + 250 
+        }, 0)
 
-      // Breakdowns
-      runsByStatus,
-      runsByDomain,
+      res.json({
+        // Core metrics
+        totalRuns,
+        activeAgents,
+        pendingApprovals,
+        totalBlocked,
+        totalAllowed,
+        totalApprovalRequired: totalApproval,
+        avgRiskScore,
+        highRiskRuns,
 
-      // Recent data for dashboard widgets
-      recentRuns:      recentRunsResult.data      ?? [],
-      pendingList:     recentApprovalsResult.data  ?? [],
-    })
+        // Breakdowns
+        runsByStatus,
+        runsByDomain,
+
+        // Recent data for dashboard widgets
+        recentRuns:      recentRunsResult.data      ?? [],
+        pendingList:     recentApprovalsResult.data  ?? [],
+
+        // Security Pulse (Pro)
+        securityPulse: {
+          totalValueProtected,
+          safetyScore: Math.round((totalAllowed / (totalAllowed + totalBlocked + 1)) * 100),
+          shieldStatus: totalBlocked > 5 ? 'Elite' : 'Active',
+          lastAttackBlocked: toolEvents.find(e => e.decision === 'blocked')?.tool_name || 'None'
+        }
+      })
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch dashboard stats' })
   }

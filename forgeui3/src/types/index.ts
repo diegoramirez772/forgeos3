@@ -6,6 +6,13 @@ export interface Message {
   content:  string
   ts:       number
   loading?: boolean
+  thoughts?: string
+  artifacts?: Array<{
+    id: string
+    type: 'ticket' | 'map' | 'table' | 'report'
+    title: string
+    data: any
+  }>
 }
 
 export interface GovernanceEvent {

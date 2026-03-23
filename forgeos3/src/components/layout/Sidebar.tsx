@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Cpu, Archive, Shield, Eye, CheckSquare,
   Settings, Zap, LogOut, GitBranch, RefreshCw, BookOpen,
   ChevronRight, ChevronsLeft, ChevronsRight, Menu, X, Box,
-  ChevronDown
+  ChevronDown, Skull
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useAgentStore } from '../../store/agentStore'
@@ -20,6 +20,7 @@ const GOVERNANCE = [
   { to: '/gateway', icon: GitBranch, label: 'Tool Gateway' },
   { to: '/loopguard', icon: RefreshCw, label: 'Loop Guard' },
   { to: '/sandbox', icon: Box, label: 'Sandbox' },
+  { to: '/attack-simulator', icon: Skull, label: 'Attack Simulator' },
 ]
 
 const OBSERVABILITY = [
