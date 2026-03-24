@@ -1,170 +1,249 @@
-# ForgeOS3 — Agent Runtime (William)
+<div align="center">
 
-Capa de ejecución segura de agentes para ForgeOS3. Implementa el ciclo completo de un run: intent → tool planning → policy gate → execution → audit. Compatible con OpenClaw y cualquier runtime futuro mediante un adapter normalizado.
+<img src="forgeos3/public/favicon.svg" alt="ForgeOS3" width="64" height="64" />
+
+# ForgeOS3
+
+### Runtime-Agnostic Infrastructure for Safe AI Agents
+
+**Build once. Govern anywhere.**
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
+[![License](https://img.shields.io/badge/License-MIT-f59e0b?style=flat-square)](LICENSE)
+
+<br />
+
+> Built at **AI Tinkerers Hackathon · Durango, Mexico 2025**
+
+</div>
 
 ---
 
-## Stack
+## What is ForgeOS3?
 
-- **Node.js** + **TypeScript**
-- **ts-node** — ejecución directa sin compilar
-- **axios** — comunicación con la API de Diego
-- **dotenv** — variables de entorno
+ForgeOS3 is **not another agent runtime**. It is a reusable infrastructure layer that sits on top of existing agent frameworks and makes them safe, auditable, and production-ready.
 
----
-
-## Estructura
+While frameworks like LangGraph, AutoGen, and CrewAI focus on *how* agents think, ForgeOS3 focuses on *what* they're allowed to do — and ensures every decision is enforced, logged, and explainable.
 
 ```
-forgeos3-agent/
+[ Your Agent Runtime ]
+        ↓
+[ ForgeOS3 Infrastructure Layer ]
+   Policy Engine · Tool Gateway · Loop Guard
+   Approval Router · Sandbox · Audit Trail
+        ↓
+[ Supabase · Event Log · Approval Queue ]
+```
+
+---
+
+## Core Capabilities
+
+| Module | Description |
+|---|---|
+| 🏗️ **Builder Console** | Create agents from reusable templates with domain profiles, tool packs and policy presets |
+| 📦 **Registry Manager** | Centralized store of domain profiles, tool packs, policy configs and runtime adapters |
+| ⚖️ **Policy Engine** | Evaluates every tool intent and returns `allowed`, `blocked`, or `approval_required` |
+| 🔀 **Tool Gateway** | Intercept layer — every tool call passes through before execution |
+| 🔁 **Loop Guard** | Detects runaway behavior, tracks loop risk scores, activates safe mode or kill switch |
+| 🧱 **Sandbox Layer** | Isolated execution with timeouts, resource limits, network allowlist and secret scoping |
+| 👁️ **Sentinel Studio** | Live dashboard of active runs, tool timelines and decision badges |
+| 📋 **Audit Trail** | Full institutional record of runs, decisions, approvals and risk events |
+| ✅ **Approvals Panel** | Human-in-the-loop workflow for sensitive tool calls |
+| 🔌 **Runtime Adapters** | Connect to any agent framework — OpenClaw (live), LangGraph, AutoGen, CrewAI (planned) |
+
+---
+
+## Demo — 4 Scenarios
+
+**Scenario A — Health**
+```
+Input: "Summarize patient intake #4821 and create a follow-up checklist"
+
+summarize      → ✅ allowed
+checklist      → ✅ allowed
+diagnose       → ❌ blocked  (critical sensitivity · strict policy)
+```
+
+**Scenario B — Gov**
+```
+Input: "Analyze public request #2291 and route to the right department"
+
+classify       → ✅ allowed
+route          → ✅ allowed
+write_external → ⏳ approval required  (writes to municipal DB)
+```
+
+**Scenario C — Marketing**
+```
+Input: "Generate a campaign workflow and prepare a content draft"
+
+summarize      → ✅ allowed
+draft          → ✅ allowed
+publish        → ⏳ approval required → ❌ rejected
+```
+
+**Scenario D — Loop Guard**
+```
+Same tool called repeatedly → risk score escalates → safe mode activated
+```
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   ForgeOS3 Web App                       │
+│  Builder · Registry · Policy · Sentinel · Audit          │
+└──────────────────────────┬──────────────────────────────┘
+                           │ HTTP
+┌──────────────────────────▼──────────────────────────────┐
+│                  ForgeOS3 Core API                        │
+│  Policy Engine · Tool Gateway · Loop Guard               │
+│  Approval Router · Sandbox Layer · Audit & Event Log     │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────┐
+│               Runtime Adapter Layer                       │
+│  OpenClaw Adapter (live) · LangGraph · AutoGen (planned) │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────┐
+│                  Agent Runtime(s)                         │
+│              OpenClaw · Custom Enterprise                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Repository Structure
+
+```
+forgeos3/                    ← Frontend (Cristian)
 ├── src/
-│   ├── adapter/
-│   │   └── openclawAdapter.ts   # Toda la comunicación con la API + mock fallback
-│   ├── scenarios/
-│   │   ├── healthScenario.ts    # Escenario A — Health
-│   │   ├── govScenario.ts       # Escenario B — Government
-│   │   ├── marketingScenario.ts # Escenario C — Marketing
-│   │   └── loopScenario.ts      # Escenario D — Loop Guard
-│   ├── tools/
-│   │   ├── healthTools.ts       # summarize, checklist, diagnose, write_record
-│   │   ├── govTools.ts          # classify, route, write_external, publish
-│   │   └── marketingTools.ts    # summarize, draft, publish, schedule
-│   ├── index.ts                 # Entry point — corre los 4 escenarios
-│   └── demo.ts                  # Alias de index.ts
-├── .env
-└── package.json
+│   ├── pages/               # 13 pages — Builder, Sentinel, Audit, etc
+│   ├── components/          # UI system — Badge, Button, Card, Modal...
+│   ├── store/               # Zustand — auth, agents, runs
+│   └── types/               # Shared TypeScript types
+
+forgeos3-backend/            ← API + Core Engine (Diego)
+├── src/
+│   ├── routes/              # REST endpoints
+│   ├── engine/              # Policy, Gateway, LoopGuard, Audit, Sandbox
+│   └── db/                  # Supabase client + seeds
+
+forgeos3-agent/              ← OpenClaw Adapter (William)
+├── src/
+│   ├── adapter/             # openclawAdapter — connects to ForgeOS3 API
+│   ├── runtime/             # AgentExecutor — Claude-powered agent loop
+│   ├── tools/               # Tool registry per domain (health, gov, agro, fintech)
+│   └── server.ts            # Express server on port 4000
 ```
 
 ---
 
-## Setup
+## Getting Started
 
+### Prerequisites
+- Node.js 20+
+- A Supabase project
+- Anthropic API key
+
+### 1. Clone
 ```bash
-cd forgeos3/forgeos3-agent
+git clone https://github.com/diegoramirez772/forgeos3.git
+cd forgeos3
+```
+
+### 2. Backend
+```bash
+cd forgeos3-backend
 npm install
-cp .env.example .env
+cp .env.example .env        # add your Supabase credentials
+npm run dev                 # runs on http://localhost:3001
 ```
 
-Llena el `.env`:
-
-```env
-VITE_API_URL=https://forgeos3-production.up.railway.app
-FORGEOS3_API_URL=https://forgeos3-production.up.railway.app
-SUPABASE_URL=tu_supabase_url
-SUPABASE_SERVICE_KEY=tu_service_key
-JWT_SECRET=forgeos3_secret_2025
-AGENT_API_KEY=tu_jwt_token
-```
-
----
-
-## Correr el demo
-
+### 3. Frontend
 ```bash
-# Los 4 escenarios en secuencia (recomendado para el pitch)
-npm run demo:all
-
-# Escenarios individuales
-npm run demo:health      # Escenario A
-npm run demo:gov         # Escenario B
-npm run demo:marketing   # Escenario C
-npm run demo:loop        # Escenario D
+cd forgeos3
+npm install
+cp .env.example .env        # set VITE_API_URL=http://localhost:3001
+npm run dev                 # runs on http://localhost:5173
 ```
 
-> **Nota:** Si la API no está disponible, el agente corre automáticamente en modo mock sin cambiar ningún código.
-
----
-
-## Los 4 Escenarios
-
-### A) Health Agent
-**Input:** `"Summarize patient intake #4821 and create a follow-up checklist"`
-
-| Tool | Decisión | Motivo |
-|------|----------|--------|
-| `summarize` | ✅ allowed | Baja sensibilidad |
-| `checklist` | ✅ allowed | Baja sensibilidad |
-| `diagnose` | ❌ blocked | Sensibilidad crítica + política strict |
-
----
-
-### B) Government Agent
-**Input:** `"Analyze public request #2291 and route to the right department"`
-
-| Tool | Decisión | Motivo |
-|------|----------|--------|
-| `classify` | ✅ allowed | Baja sensibilidad |
-| `route` | ✅ allowed | Baja sensibilidad |
-| `write_external` | ⏳ approval_required | Escribe en BD municipal |
-
-El run **pausa y espera** aprobación humana. Si se aprueba → continúa. Si se rechaza → status `blocked`.
-
----
-
-### C) Marketing Agent
-**Input:** `"Generate a campaign workflow and prepare a content draft"`
-
-| Tool | Decisión | Motivo |
-|------|----------|--------|
-| `summarize` | ✅ allowed | Baja sensibilidad |
-| `draft` | ✅ allowed | Baja sensibilidad |
-| `publish` | ⏳ approval_required → ❌ rejected | Publica en canales externos |
-
-El operador **rechaza** la publicación — el run termina en status `blocked`.
-
----
-
-### D) Loop Guard
-El agente llama `classify` 6 veces seguidas intencionalmente.
-
-- Iteración 1 → score: 6/100 → normal
-- Iteración 2 → score: 18/100 → normal
-- Iteración 3 → score: 36/100 → **SAFE MODE activado**
-- Run termina automáticamente con status `safe_mode`
-
----
-
-## Flujo del Adapter
-
-```
-startRun()
-    ↓
-beforeToolCall()  →  allowed / blocked / approval_required
-    ↓
-[si allowed]  ejecutar tool
-    ↓
-afterToolCall()   →  loggea resultado
-    ↓
-evaluateLoop()    →  checa risk score acumulado
-    ↓
-[si score > 30]   →  safe_mode automático
-    ↓
-finishRun()       →  finished / blocked / safe_mode
-```
-
----
-
-## Mock Fallback
-
-El adapter tiene fallback automático. Si la API no responde:
-- `startRun` → genera ID local
-- `beforeToolCall` → bloquea tools peligrosas por nombre (`diagnose`, `deleteAllData`, etc.)
-- `requestApproval` → simula delay y devuelve la decisión configurada
-- `evaluateLoop` → incrementa score localmente
-- `afterToolCall` / `finishRun` → loggea en memoria
-
-No hay que cambiar nada para pasar de mock a real — el adapter lo detecta solo.
-
----
-
-## Comandos
-
+### 4. Agent
 ```bash
-npm run demo:all       # demo completo (pitch)
-npm run demo:health    # solo escenario A
-npm run demo:gov       # solo escenario B
-npm run demo:marketing # solo escenario C
-npm run demo:loop      # solo escenario D
-npm run build          # compilar TypeScript
-npm run dev            # hot reload
+cd forgeos3-agent
+npm install
+cp .env.example .env        # set FORGEOS3_API_URL and ANTHROPIC_API_KEY
+npm run dev                 # server on http://localhost:4000
 ```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS, Zustand |
+| Backend | Node.js, Express, TypeScript, Zod, Supabase |
+| Database | Supabase (PostgreSQL) |
+| Agent Runtime | OpenClaw + Anthropic Claude |
+| Shared | TypeScript interfaces across all three projects |
+
+---
+
+## Agent Capabilities (William)
+
+The OpenClaw adapter implements 10 production-grade features:
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 1 | Chain of Thought | Agent plans before acting — writes internal reasoning steps |
+| 2 | Dynamic Risk Scoring | Loop guard evaluated after every tool call |
+| 3 | Durango GovTech Tools | reportar_incidencia, consultar_estatus_tramite, asignar_prioridad |
+| 4 | Supabase Persistence | Clinical records and incidents saved to `tickets` table |
+| 5 | Pro Error Handling | Fallback reasoning on tool failure — never breaks the flow |
+| 6 | Adaptive Personality | Tone and vocabulary change per domain (clinical/field/compliance) |
+| 7 | Input Validation | Required fields validated before hitting governance layer |
+| 8 | Context Memory | Tool results reused in subsequent steps |
+| 9 | Human Pause System | Real polling loop waiting for operator approval |
+| 10 | Sentinel Auto-correction | Blocked tools trigger safe alternative suggestions |
+
+---
+
+## Team
+
+| Role | Person |
+|---|---|
+| Backend · DB · Core Engine | Diego |
+| Runtime · OpenClaw Adapter | William |
+| Frontend · Dashboard · UI | Cristian |
+
+---
+
+## Status
+
+- [x] Frontend — 13 pages complete
+- [x] Backend — all core endpoints live on Railway
+- [x] Agent — 4 scenarios + 10 advanced features
+- [x] Supabase — schema + persistence
+- [x] Policy Engine — allow / block / approval_required
+- [x] Loop Guard — risk score + safe mode
+- [x] Approval Flow — human-in-the-loop with real polling
+- [x] Audit Trail — full run traceability
+- [x] Durango GovTech tools — 3 real government tools
+
+---
+
+<div align="center">
+
+**ForgeOS3** · AI Tinkerers Hackathon · Durango, Mexico 2025
+
+*We are not building another agent. We are building the infrastructure layer that makes agents safer, reusable, and production-ready across runtimes.*
+
+</div>
