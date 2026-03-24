@@ -32,6 +32,59 @@ function fakeHistory(current: number) {
   }).concat([current])
 }
 
+function Speedometer({ score }: { score: number }) {
+  const MAX = 50
+  const pct = Math.min(score / MAX, 1)
+  // Arc: de -210° a 30° (240° total). Needle parte de -210°
+  const startAngle = -210
+  const totalArc = 240
+  const needleAngle = startAngle + pct * totalArc
+
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const cx = 80, cy = 72, r = 55
+
+  // Arc path helper
+  const arcPath = (from: number, to: number, radius: number) => {
+    const s = { x: cx + radius * Math.cos(toRad(from)), y: cy + radius * Math.sin(toRad(from)) }
+    const e = { x: cx + radius * Math.cos(toRad(to)),   y: cy + radius * Math.sin(toRad(to)) }
+    const large = to - from > 180 ? 1 : 0
+    return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${large} 1 ${e.x} ${e.y}`
+  }
+
+  // Needle tip
+  const nx = cx + (r - 6) * Math.cos(toRad(needleAngle))
+  const ny = cy + (r - 6) * Math.sin(toRad(needleAngle))
+
+  const color = score > 30 ? '#ef4444' : score > 15 ? '#f59e0b' : '#10b981'
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width="160" height="96" viewBox="0 0 160 96">
+        {/* Track */}
+        <path d={arcPath(startAngle, startAngle + totalArc, r)} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="10" strokeLinecap="round" />
+        {/* Green zone 0–30% */}
+        <path d={arcPath(startAngle, startAngle + totalArc * 0.30, r)} fill="none" stroke="#10b981" strokeWidth="10" strokeLinecap="round" opacity="0.35" />
+        {/* Amber zone 30–60% */}
+        <path d={arcPath(startAngle + totalArc * 0.30, startAngle + totalArc * 0.60, r)} fill="none" stroke="#f59e0b" strokeWidth="10" strokeLinecap="round" opacity="0.35" />
+        {/* Red zone 60–100% */}
+        <path d={arcPath(startAngle + totalArc * 0.60, startAngle + totalArc, r)} fill="none" stroke="#ef4444" strokeWidth="10" strokeLinecap="round" opacity="0.35" />
+        {/* Active fill */}
+        {pct > 0 && (
+          <path d={arcPath(startAngle, startAngle + pct * totalArc, r)} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round" />
+        )}
+        {/* Needle */}
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r="4" fill={color} />
+        {/* Score */}
+        <text x={cx} y={cy + 20} textAnchor="middle" fontSize="16" fontWeight="700" fill={color} fontFamily="monospace">{score}</text>
+        {/* Labels */}
+        <text x="18" y="88" fontSize="8" fill="rgba(255,255,255,0.3)" fontFamily="sans-serif">0</text>
+        <text x="130" y="88" fontSize="8" fill="rgba(255,255,255,0.3)" fontFamily="sans-serif">50</text>
+      </svg>
+    </div>
+  )
+}
+
 export function LoopGuard() {
   const { runs } = useRunStore()
   const [killModal, setKillModal] = useState<Run | null>(null)
@@ -114,9 +167,8 @@ export function LoopGuard() {
             const level = getRiskLevel(killed.has(run.id) ? 0 : run.loopRiskScore)
             const isKilled = killed.has(run.id)
             const isSafe   = safeMode.has(run.id)
-            const pct      = Math.min(isKilled ? 0 : run.loopRiskScore, 100)
             const history  = fakeHistory(isKilled ? 0 : run.loopRiskScore)
-            const toolRepeat = run.toolEvents.length > 1 &&
+            const toolRepeat = (run.toolEvents ?? []).length > 1 &&
               run.toolEvents[run.toolEvents.length - 1]?.toolName === run.toolEvents[run.toolEvents.length - 2]?.toolName
 
             return (
@@ -148,34 +200,15 @@ export function LoopGuard() {
 
                       <div className="text-[11px] text-forge-subtle mb-4 truncate">{run.id}</div>
 
-                      {/* Risk gauge bar */}
+                      {/* Speedometer gauge */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] text-forge-subtle">Loop Risk Score</span>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ${level.bg} ${level.border} ${level.text}`}>
-                              {level.label}
-                            </span>
-                            <span className={`text-xl font-bold ${level.text}`}>
-                              {isKilled ? 0 : run.loopRiskScore}
-                            </span>
-                          </div>
+                          <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ${level.bg} ${level.border} ${level.text}`}>
+                            {level.label}
+                          </span>
                         </div>
-                        <div className="h-2.5 bg-forge-elevated rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${pct}%` }}
-                            transition={{ delay: 0.4 + ri * 0.1, duration: 0.7, ease: 'easeOut' }}
-                            className={`h-full rounded-full ${level.color}`}
-                          />
-                        </div>
-                        {/* Threshold markers */}
-                        <div className="relative h-3">
-                          <div className="absolute left-[15%] top-0 w-px h-3 bg-forge-amber/40" />
-                          <div className="absolute left-[30%] top-0 w-px h-3 bg-forge-red/40" />
-                          <div className="absolute left-[15%] top-0 text-[8px] text-forge-amber/60 translate-x-1">15</div>
-                          <div className="absolute left-[30%] top-0 text-[8px] text-forge-red/60 translate-x-1">30</div>
-                        </div>
+                        <Speedometer score={isKilled ? 0 : run.loopRiskScore} />
                       </div>
 
                       {/* Mini history sparkline */}
@@ -196,7 +229,7 @@ export function LoopGuard() {
                       {/* Tool call sequence */}
                       <div className="space-y-1.5">
                         <div className="text-[9px] font-bold uppercase tracking-widest text-forge-subtle">Tool Sequence</div>
-                        {run.toolEvents.slice(-4).map((te, i, arr) => (
+                        {(run.toolEvents ?? []).slice(-4).map((te, i, arr) => (
                           <div key={te.id} className="flex items-center gap-2">
                             <span className="text-[9px] text-forge-subtle w-3 text-right">{i + 1}</span>
                             <div className={`flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-lg border ${
