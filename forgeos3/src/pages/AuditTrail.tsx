@@ -213,7 +213,7 @@ function EntryDetail({ entry }: { entry: AuditEntry }) {
             <DetailRow label="Input"><p className="text-forge-secondary">{entry.run.input}</p></DetailRow>
             <div className="flex items-center gap-6 text-[10px] text-forge-subtle">
               <span>Loop Risk: <span className={`font-bold ${getRiskColor(entry.run.loopRiskScore)}`}>{entry.run.loopRiskScore}</span></span>
-              <span>Tools: <span className="font-bold text-forge-primary">{entry.run.toolEvents.length}</span></span>
+              <span>Tools: <span className="font-bold text-forge-primary">{(entry.run.toolEvents ?? []).length}</span></span>
               <span>Status: <span className="font-bold text-forge-primary">{entry.run.status}</span></span>
             </div>
           </div>
@@ -423,7 +423,7 @@ export function AuditTrail() {
   const allEntries: AuditEntry[] = useMemo(() => {
     const list: AuditEntry[] = []
     runs.forEach(r => {
-      r.toolEvents.forEach(e => {
+      (r.toolEvents ?? []).forEach(e => {
         list.push({ kind: 'tool', event: { ...e, agentName: r.agentName, domain: r.domain, runId: r.id }, ts: new Date(e.timestamp).getTime() })
       })
     })

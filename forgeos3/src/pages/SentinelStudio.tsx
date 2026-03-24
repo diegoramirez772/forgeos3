@@ -50,6 +50,8 @@ export function SentinelStudio() {
   const [runState, setRunState] = useState<RunningState>('idle')
   const [runError, setRunError] = useState<string | null>(null)
   const [showRunPanel, setShowRunPanel] = useState(false)
+  const [emergencyAlerts, setEmergencyAlerts] = useState<Array<{ id: number; toolName: string; reason: string }>>([])
+  const alertIdRef = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
   const outputRef = useRef<HTMLDivElement>(null)
 
@@ -116,7 +118,14 @@ export function SentinelStudio() {
             try {
               const payload = JSON.parse(dataLine)
               if (eventType === 'token')     setStreamOutput(prev => prev + payload.text)
-              if (eventType === 'gov_event') setGovEvents(prev => [...prev, payload])
+              if (eventType === 'gov_event') {
+                setGovEvents(prev => [...prev, payload])
+                if (payload.decision === 'blocked') {
+                  const id = ++alertIdRef.current
+                  setEmergencyAlerts(prev => [...prev, { id, toolName: payload.toolName, reason: payload.reason }])
+                  setTimeout(() => setEmergencyAlerts(prev => prev.filter(a => a.id !== id)), 6000)
+                }
+              }
               if (eventType === 'done')      setRunState('done')
               if (eventType === 'error') {
                 setRunError(payload.message)
@@ -488,6 +497,42 @@ export function SentinelStudio() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* EMERGENCY ALERTS */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
+        <AnimatePresence>
+          {emergencyAlerts.map(alert => (
+            <motion.div
+              key={alert.id}
+              initial={{ opacity: 0, x: 60, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 60, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="pointer-events-auto w-80 bg-red-950 border border-red-500/60 rounded-2xl p-4 shadow-[0_0_30px_rgba(239,68,68,0.25)]"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                  <XCircle size={15} className="text-red-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Sentinel bloqueó</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  </div>
+                  <p className="text-sm font-semibold text-white truncate">{alert.toolName}</p>
+                  <p className="text-xs text-red-300/80 mt-0.5 line-clamp-2">{alert.reason}</p>
+                </div>
+                <button
+                  onClick={() => setEmergencyAlerts(prev => prev.filter(a => a.id !== alert.id))}
+                  className="text-red-500/60 hover:text-red-400 transition-colors shrink-0"
+                >
+                  <XCircle size={13} />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   )
