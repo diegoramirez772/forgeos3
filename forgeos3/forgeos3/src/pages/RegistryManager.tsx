@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit2, Package, Shield, Layers, X, Check, AlertTriangle } from 'lucide-react'
+import { Plus, Edit2, Package, Shield, Layers, X, Check, AlertTriangle, Table2, AlertOctagon, TrendingUp } from 'lucide-react'
 import type { DomainProfileConfig, ToolPack, PolicyPreset } from '../types/agent'
 import { Spinner } from '../components/ui/Skeleton'
 import api from '../lib/api'
@@ -19,6 +19,28 @@ const SENS_STYLE: Record<string, string> = {
   low:      'bg-forge-elevated border-forge-border text-forge-subtle',
 }
 
+// Danger score map: used for sorting and bar width
+const DANGER_SCORE: Record<string, number> = {
+  critical: 100,
+  high:     70,
+  medium:   40,
+  low:      10,
+}
+
+const DANGER_BAR: Record<string, string> = {
+  critical: 'bg-red-500',
+  high:     'bg-amber-400',
+  medium:   'bg-blue-400',
+  low:      'bg-forge-subtle',
+}
+
+const DANGER_ICON: Record<string, string> = {
+  critical: 'text-red-500',
+  high:     'text-amber-400',
+  medium:   'text-blue-400',
+  low:      'text-forge-subtle',
+}
+
 const fade = {
   hidden: { opacity: 0, y: 12 },
   show:   { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
@@ -29,6 +51,9 @@ type EditTarget =
   | { kind: 'pack'; item: ToolPack }
   | { kind: 'policy'; item: PolicyPreset }
   | null
+
+type SortKey = 'name' | 'sensitivity' | 'domain' | 'approval'
+type SortDir = 'asc' | 'desc'
 
 export function RegistryManager() {
   const [tab, setTab] = useState(0)
@@ -42,6 +67,12 @@ export function RegistryManager() {
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // Registry table state
+  const [regSearch, setRegSearch] = useState('')
+  const [regFilter, setRegFilter] = useState<'all' | 'critical' | 'high' | 'medium' | 'low'>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('sensitivity')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const fetchAll = async () => {
     setLoading(true)
@@ -64,10 +95,52 @@ export function RegistryManager() {
 
   useEffect(() => { fetchAll() }, [])
 
+  // Flatten all tools from all packs for the registry table
+  const allTools = packs.flatMap(pack =>
+    (pack.tools ?? []).map(tool => ({
+      ...tool,
+      packName: pack.name,
+      domain: pack.domain,
+    }))
+  )
+
+  const filteredTools = allTools
+    .filter(t => {
+      const matchSearch = regSearch === '' ||
+        t.name.toLowerCase().includes(regSearch.toLowerCase()) ||
+        t.description?.toLowerCase().includes(regSearch.toLowerCase()) ||
+        t.domain.toLowerCase().includes(regSearch.toLowerCase())
+      const matchFilter = regFilter === 'all' || t.sensitivity === regFilter
+      return matchSearch && matchFilter
+    })
+    .sort((a, b) => {
+      let cmp = 0
+      if (sortKey === 'sensitivity') {
+        cmp = (DANGER_SCORE[b.sensitivity] ?? 0) - (DANGER_SCORE[a.sensitivity] ?? 0)
+      } else if (sortKey === 'name') {
+        cmp = a.name.localeCompare(b.name)
+      } else if (sortKey === 'domain') {
+        cmp = a.domain.localeCompare(b.domain)
+      } else if (sortKey === 'approval') {
+        cmp = (b.requiresApproval ? 1 : 0) - (a.requiresApproval ? 1 : 0)
+      }
+      return sortDir === 'asc' ? -cmp : cmp
+    })
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+
+  const criticalCount = allTools.filter(t => t.sensitivity === 'critical').length
+  const highCount     = allTools.filter(t => t.sensitivity === 'high').length
+  const approvalCount = allTools.filter(t => t.requiresApproval).length
+
   const TABS = [
-    { label: 'Domain Profiles', icon: Layers, count: domains.length },
-    { label: 'Tool Packs',      icon: Package, count: packs.length   },
-    { label: 'Policy Presets',  icon: Shield,  count: policies.length },
+    { label: 'Domain Profiles', icon: Layers,       count: domains.length  },
+    { label: 'Tool Packs',      icon: Package,      count: packs.length    },
+    { label: 'Policy Presets',  icon: Shield,       count: policies.length },
+    { label: 'Tool Registry',   icon: Table2,       count: allTools.length },
   ]
 
   const openEdit = (target: EditTarget) => {
@@ -263,6 +336,178 @@ export function RegistryManager() {
                   <Plus size={16} />
                   <span className="text-xs font-medium">New Policy Preset</span>
                 </motion.div>
+              </motion.div>
+            )}
+
+            {/* ─── TAB 3: TOOL REGISTRY ─── */}
+            {tab === 3 && (
+              <motion.div key="registry" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}
+                className="space-y-5">
+
+                {/* Summary KPI strip */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'Total Tools',      value: allTools.length, color: 'text-forge-white',   icon: Table2,         iconCls: 'text-forge-subtle'  },
+                    { label: 'Critical',         value: criticalCount,   color: 'text-red-400',       icon: AlertOctagon,   iconCls: 'text-red-500'       },
+                    { label: 'High Risk',        value: highCount,       color: 'text-amber-400',     icon: TrendingUp,     iconCls: 'text-amber-400'     },
+                    { label: 'Require Approval', value: approvalCount,   color: 'text-blue-400',      icon: Shield,         iconCls: 'text-blue-400'      },
+                  ].map(({ label, value, color, icon: Icon, iconCls }) => (
+                    <div key={label} className="flex items-center gap-3 p-4 bg-forge-surface border border-forge-border rounded-2xl">
+                      <div className="w-8 h-8 rounded-xl bg-forge-elevated border border-forge-border flex items-center justify-center shrink-0">
+                        <Icon size={14} className={iconCls} />
+                      </div>
+                      <div>
+                        <div className={`text-xl font-bold tracking-tight ${color}`}>{value}</div>
+                        <div className="text-[10px] text-forge-subtle uppercase tracking-wide">{label}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Table container */}
+                <div className="bg-forge-surface border border-forge-border rounded-2xl overflow-hidden">
+
+                  {/* Table toolbar */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-forge-border gap-4">
+                    <div className="flex items-center gap-2 flex-1 max-w-xs">
+                      <input
+                        value={regSearch}
+                        onChange={e => setRegSearch(e.target.value)}
+                        placeholder="Search tools..."
+                        className="flex-1 bg-forge-elevated border border-forge-border rounded-xl px-3 py-1.5 text-xs text-forge-white placeholder:text-forge-subtle outline-none focus:border-forge-amber/40 transition-colors"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {(['all', 'critical', 'high', 'medium', 'low'] as const).map(f => (
+                        <button key={f} onClick={() => setRegFilter(f)}
+                          className={`text-[10px] px-2.5 py-1 rounded-lg border font-semibold capitalize transition-all ${
+                            regFilter === f
+                              ? f === 'all'      ? 'bg-forge-amber text-forge-bg border-forge-amber'
+                              : f === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                              : f === 'high'     ? 'bg-amber-400/20 text-amber-400 border-amber-400/30'
+                              : f === 'medium'   ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              :                   'bg-forge-elevated border-forge-border text-forge-subtle'
+                              : 'bg-forge-elevated border-forge-border text-forge-subtle hover:border-forge-line'
+                          }`}>
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Column headers */}
+                  <div className="grid grid-cols-12 gap-3 px-5 py-2.5 border-b border-forge-border/50 bg-forge-elevated/20">
+                    {[
+                      { label: 'Tool Name',    key: 'name' as SortKey,        span: 'col-span-3' },
+                      { label: 'Description',  key: null,                      span: 'col-span-3' },
+                      { label: 'Domain',       key: 'domain' as SortKey,      span: 'col-span-2' },
+                      { label: 'Pack',         key: null,                      span: 'col-span-2' },
+                      { label: 'Danger',       key: 'sensitivity' as SortKey, span: 'col-span-1' },
+                      { label: 'Approval',     key: 'approval' as SortKey,    span: 'col-span-1' },
+                    ].map(({ label, key, span }) => (
+                      <button key={label}
+                        onClick={() => key && toggleSort(key)}
+                        className={`text-[9px] font-bold uppercase tracking-widest text-forge-subtle text-left flex items-center gap-1 ${span} ${key ? 'hover:text-forge-secondary transition-colors cursor-pointer' : 'cursor-default'}`}>
+                        {label}
+                        {key && sortKey === key && (
+                          <span className="text-forge-amber">{sortDir === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Rows */}
+                  <div className="divide-y divide-forge-border/30">
+                    <AnimatePresence>
+                      {filteredTools.length === 0 ? (
+                        <div className="flex items-center justify-center py-12 text-forge-subtle text-sm">
+                          No tools match this filter
+                        </div>
+                      ) : (
+                        filteredTools.map((tool, i) => {
+                          const dangerScore = DANGER_SCORE[tool.sensitivity] ?? 10
+                          return (
+                            <motion.div key={tool.id}
+                              initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.025, duration: 0.2 }}
+                              className="grid grid-cols-12 gap-3 items-center px-5 py-3.5 hover:bg-forge-elevated/30 transition-colors group">
+
+                              {/* Tool Name */}
+                              <div className="col-span-3 flex items-center gap-2.5">
+                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${DANGER_BAR[tool.sensitivity]}`} />
+                                <code className="text-xs font-mono text-forge-amber truncate">{tool.name}</code>
+                              </div>
+
+                              {/* Description */}
+                              <div className="col-span-3 text-[11px] text-forge-subtle truncate">
+                                {tool.description || '—'}
+                              </div>
+
+                              {/* Domain */}
+                              <div className="col-span-2">
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full border font-semibold capitalize ${DOMAIN_STYLE[tool.domain]?.pill ?? 'bg-forge-elevated border-forge-border text-forge-subtle'}`}>
+                                  {tool.domain}
+                                </span>
+                              </div>
+
+                              {/* Pack */}
+                              <div className="col-span-2 text-[11px] text-forge-subtle truncate">
+                                {tool.packName}
+                              </div>
+
+                              {/* Danger level — badge + mini bar */}
+                              <div className="col-span-1">
+                                <div className="space-y-1">
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wide ${SENS_STYLE[tool.sensitivity] ?? SENS_STYLE['low']}`}>
+                                    {tool.sensitivity}
+                                  </span>
+                                  <div className="h-1 bg-forge-elevated rounded-full overflow-hidden w-full">
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${dangerScore}%` }}
+                                      transition={{ delay: i * 0.025 + 0.2, duration: 0.4, ease: 'easeOut' }}
+                                      className={`h-full rounded-full ${DANGER_BAR[tool.sensitivity]}`}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Requires Approval */}
+                              <div className="col-span-1 flex items-center">
+                                {tool.requiresApproval ? (
+                                  <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border bg-amber-400/10 border-amber-400/20 text-amber-400 font-bold">
+                                    <AlertOctagon size={8} /> Yes
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded border bg-forge-elevated border-forge-border text-forge-subtle font-semibold">
+                                    No
+                                  </span>
+                                )}
+                              </div>
+
+                            </motion.div>
+                          )
+                        })
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Footer count */}
+                  <div className="px-5 py-3 border-t border-forge-border/50 bg-forge-elevated/10 flex items-center justify-between">
+                    <span className="text-[10px] text-forge-subtle">
+                      Showing {filteredTools.length} of {allTools.length} tools
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {(['critical', 'high', 'medium', 'low'] as const).map(s => (
+                        <div key={s} className="flex items-center gap-1.5">
+                          <div className={`w-2 h-2 rounded-full ${DANGER_BAR[s]}`} />
+                          <span className="text-[10px] text-forge-subtle capitalize">{s}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
               </motion.div>
             )}
           </AnimatePresence>
