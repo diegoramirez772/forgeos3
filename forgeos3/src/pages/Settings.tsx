@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Zap, Copy, RefreshCw, Check, Shield, Key, Building2, ChevronRight, AlertTriangle, Loader } from 'lucide-react'
+import { Zap, Copy, RefreshCw, Check, Shield, Key, Building2, ChevronRight, AlertTriangle, Loader, Users } from 'lucide-react'
+import type { DurangoProfile } from '../store/authStore'
 import { useAuthStore } from '../store/authStore'
 import api from '../lib/api'
 
@@ -16,6 +17,13 @@ const SECTIONS = [
   { id: 'runtime', icon: Zap, label: 'Runtimes' },
   { id: 'api', icon: Key, label: 'API Access' },
   { id: 'org', icon: Building2, label: 'Organization' },
+  { id: 'profile', icon: Users, label: 'Perfil' },
+]
+
+const DURANGO_PROFILES: { key: DurangoProfile; label: string; color: string; desc: string }[] = [
+  { key: 'salud',    label: 'Salud',    color: 'emerald', desc: 'Agentes y flujos del sector salud del estado' },
+  { key: 'agro',     label: 'Agro',     color: 'lime',    desc: 'Automatización agrícola y cadenas de suministro' },
+  { key: 'gobierno', label: 'Gobierno', color: 'amber',   desc: 'Gestión de trámites y servicios gubernamentales' },
 ]
 
 export function Settings() {
@@ -26,7 +34,7 @@ export function Settings() {
   const [showConfirmRotate, setShowConfirmRotate] = useState(false)
   const [apiKey, setApiKey] = useState<string | null>(null)
   const [keyLoading, setKeyLoading] = useState(false)
-  const { user } = useAuthStore()
+  const { user, activeProfile, setProfile } = useAuthStore()
 
   // Load real API key from backend when 'api' section is opened
   useEffect(() => {
@@ -228,6 +236,44 @@ export function Settings() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {section === 'profile' && (
+                <div className="bg-forge-surface border border-forge-border rounded-2xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-5 py-4 border-b border-forge-border bg-forge-elevated/30">
+                    <Users size={14} className="text-amber-500" />
+                    <span className="text-sm font-bold text-forge-white">Perfil Durango</span>
+                    <span className="ml-auto text-[10px] text-forge-subtle">Selecciona el contexto activo</span>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    {DURANGO_PROFILES.map(p => {
+                      const isActive = activeProfile === p.key
+                      const colors: Record<string, string> = {
+                        emerald: isActive ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'border-forge-border text-forge-secondary hover:border-emerald-500/30 hover:text-emerald-400',
+                        lime:    isActive ? 'bg-lime-500/10 border-lime-500/30 text-lime-400'         : 'border-forge-border text-forge-secondary hover:border-lime-500/30 hover:text-lime-400',
+                        amber:   isActive ? 'bg-amber-400/10 border-amber-400/30 text-amber-400'      : 'border-forge-border text-forge-secondary hover:border-amber-400/30 hover:text-amber-400',
+                      }
+                      return (
+                        <button
+                          key={p.key}
+                          onClick={() => setProfile(p.key)}
+                          className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl border transition-all text-left ${colors[p.color]}`}
+                        >
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'animate-pulse' : ''} ${p.color === 'emerald' ? 'bg-emerald-400' : p.color === 'lime' ? 'bg-lime-400' : 'bg-amber-400'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold">{p.label}</div>
+                            <div className="text-[11px] text-forge-subtle mt-0.5">{p.desc}</div>
+                          </div>
+                          {isActive && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-current bg-current/10 shrink-0">
+                              Activo
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )}

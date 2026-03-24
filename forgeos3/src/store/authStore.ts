@@ -7,16 +7,20 @@ interface User {
   email: string
 }
 
+export type DurangoProfile = 'salud' | 'agro' | 'gobierno'
+
 interface AuthState {
   user: User | null
   token: string | null
   isAuthenticated: boolean
   loading: boolean
   error: string | null
+  activeProfile: DurangoProfile
   login: (email: string, password: string) => Promise<void>
   signup: (name: string, email: string, password: string) => Promise<void>
   logout: () => void
   clearError: () => void
+  setProfile: (profile: DurangoProfile) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -25,6 +29,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: !!localStorage.getItem('forgeos3_token'),
   loading: false,
   error: null,
+  activeProfile: (localStorage.getItem('forgeos3_profile') as DurangoProfile) ?? 'gobierno',
 
   login: async (email: string, password: string) => {
     set({ loading: true, error: null })
@@ -86,4 +91,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   clearError: () => set({ error: null }),
+  setProfile: (profile: DurangoProfile) => {
+    localStorage.setItem('forgeos3_profile', profile)
+    set({ activeProfile: profile })
+  },
 }))
