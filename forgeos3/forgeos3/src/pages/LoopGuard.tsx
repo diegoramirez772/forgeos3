@@ -121,7 +121,6 @@ export function LoopGuard() {
             const level = getRiskLevel(killed.has(run.id) ? 0 : run.loopRiskScore)
             const isKilled = killed.has(run.id)
             const isSafe   = safeMode.has(run.id)
-            const pct      = Math.min(isKilled ? 0 : run.loopRiskScore, 100)
             const history  = fakeHistory(isKilled ? 0 : run.loopRiskScore)
             const toolRepeat = run.toolEvents.length > 1 &&
               run.toolEvents[run.toolEvents.length - 1]?.toolName === run.toolEvents[run.toolEvents.length - 2]?.toolName

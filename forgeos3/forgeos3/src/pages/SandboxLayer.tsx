@@ -62,24 +62,41 @@ function timeAgo(ts: string) {
 }
 
 const LOG_STYLE = {
-  info:  { cls: 'text-forge-secondary', dot: 'bg-blue-400',       label: 'INFO'  },
-  warn:  { cls: 'text-forge-amber',     dot: 'bg-forge-amber',    label: 'WARN'  },
-  error: { cls: 'text-forge-red',       dot: 'bg-forge-red',      label: 'ERROR' },
+  info:  { cls: 'text-forge-secondary', dot: 'bg-blue-400',    label: 'INFO'  },
+  warn:  { cls: 'text-forge-amber',     dot: 'bg-forge-amber', label: 'WARN'  },
+  error: { cls: 'text-forge-red',       dot: 'bg-forge-red',   label: 'ERROR' },
 }
+
+const ACTIONS = ['summarize', 'analyze', 'fetch_data', 'validate', 'write_report', 'detect_fraud']
 
 export function SandboxLayer() {
   const { runs, fetchRuns } = useRunStore()
-  const [config, setConfig]         = useState<SandboxConfig>(DEFAULT_CONFIG)
-  const [status, setStatus]         = useState<SandboxStatus>('idle')
-  const [logs, setLogs]             = useState<SandboxLog[]>(MOCK_LOGS)
-  const [logsOpen, setLogsOpen]     = useState(true)
-  const [killModal, setKillModal]   = useState(false)
-  const [hostInput, setHostInput]   = useState('')
+  const [config, setConfig]       = useState<SandboxConfig>(DEFAULT_CONFIG)
+  const [status, setStatus]       = useState<SandboxStatus>('idle')
+  const [logs, setLogs]           = useState<SandboxLog[]>(MOCK_LOGS)
+  const [logsOpen, setLogsOpen]   = useState(true)
+  const [killModal, setKillModal] = useState(false)
+  const [hostInput, setHostInput] = useState('')
+  const [liveStats, setLiveStats] = useState({ cpu: 0, mem: 0, elapsed: 0, action: 'idle' })
 
-  // Carga inicial — sincroniza el estado del sandbox con la API
+  useEffect(() => { fetchRuns() }, [fetchRuns])
+
   useEffect(() => {
-    fetchRuns()
-  }, [fetchRuns])
+    if (status !== 'running') {
+      setLiveStats({ cpu: 0, mem: 0, elapsed: 0, action: 'idle' })
+      return
+    }
+    const start = Date.now()
+    const tick = setInterval(() => {
+      setLiveStats({
+        cpu:     Math.min(config.maxCpuPct,   Math.round(8  + Math.random() * 35)),
+        mem:     Math.min(config.maxMemoryMb, Math.round(40 + Math.random() * 80)),
+        elapsed: Math.round((Date.now() - start) / 1000),
+        action:  ACTIONS[Math.floor(Math.random() * ACTIONS.length)],
+      })
+    }, 1200)
+    return () => clearInterval(tick)
+  }, [status, config.maxCpuPct, config.maxMemoryMb])
 
   const activeRun = runs.find(r => r.status === 'running' || r.status === 'waiting_approval')
 
@@ -121,7 +138,6 @@ export function SandboxLayer() {
         subtitle="Isolated execution environment — timeouts, resource limits, network control"
         actions={
           <div className="flex items-center gap-2">
-            {/* Status pill */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium ${
               status === 'running' ? 'bg-forge-green/10 border-forge-green/20 text-forge-green'  :
               status === 'killed'  ? 'bg-forge-red/10 border-forge-red/20 text-forge-red'        :
@@ -135,7 +151,6 @@ export function SandboxLayer() {
               }`} />
               {status === 'idle' ? 'Sandbox idle' : status === 'running' ? 'Sandbox active' : status === 'killed' ? 'Killed' : 'Timed out'}
             </div>
-
             {status === 'idle' && (
               <Button variant="success" size="sm" onClick={startSandbox}>
                 <Play size={11} /> Start
@@ -157,12 +172,12 @@ export function SandboxLayer() {
           <div className="text-[10px] font-bold text-forge-subtle uppercase tracking-widest mb-4">Sandbox Architecture</div>
           <div className="grid grid-cols-6 gap-3">
             {[
-              { icon: Box,        label: 'Isolated Container', sub: 'per tool execution',   color: 'text-blue-400',   bg: 'bg-blue-500/10'   },
-              { icon: Clock,      label: 'Timeout Enforcer',   sub: `${config.timeoutMs}ms limit`,  color: 'text-amber-500',  bg: 'bg-amber-500/10'  },
-              { icon: Zap,        label: 'Resource Limits',    sub: `${config.maxMemoryMb}mb · ${config.maxCpuPct}% CPU`, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-              { icon: config.networkMode === 'none' ? WifiOff : Wifi, label: 'Network Control', sub: config.networkMode === 'none' ? 'fully isolated' : 'allowlist only', color: 'text-forge-green', bg: 'bg-forge-green/10' },
-              { icon: Key,        label: 'Secret Scoping',     sub: config.secretScoping ? 'active' : 'disabled',     color: 'text-forge-amber', bg: 'bg-forge-amber/10' },
-              { icon: ScrollText, label: 'Audit Logs',         sub: `${logs.length} events`,         color: 'text-forge-primary', bg: 'bg-forge-elevated' },
+              { icon: Box,        label: 'Isolated Container', sub: 'per tool execution',                                                       color: 'text-blue-400',      bg: 'bg-blue-500/10'   },
+              { icon: Clock,      label: 'Timeout Enforcer',   sub: `${config.timeoutMs}ms limit`,                                              color: 'text-amber-500',     bg: 'bg-amber-500/10'  },
+              { icon: Zap,        label: 'Resource Limits',    sub: `${config.maxMemoryMb}mb · ${config.maxCpuPct}% CPU`,                       color: 'text-purple-400',    bg: 'bg-purple-500/10' },
+              { icon: config.networkMode === 'none' ? WifiOff : Wifi, label: 'Network Control', sub: config.networkMode === 'none' ? 'fully isolated' : 'allowlist only', color: 'text-forge-green',  bg: 'bg-forge-green/10' },
+              { icon: Key,        label: 'Secret Scoping',     sub: config.secretScoping ? 'active' : 'disabled',                               color: 'text-forge-amber',   bg: 'bg-forge-amber/10' },
+              { icon: ScrollText, label: 'Audit Logs',         sub: `${logs.length} events`,                                                    color: 'text-forge-primary', bg: 'bg-forge-elevated' },
             ].map(({ icon: Icon, label, sub, color, bg }) => (
               <div key={label} className={`flex flex-col items-center gap-2 p-4 ${bg} border border-forge-border rounded-2xl text-center`}>
                 <Icon size={18} className={color} />
@@ -180,7 +195,6 @@ export function SandboxLayer() {
           {/* Left: config panel */}
           <div className="col-span-1 space-y-4">
 
-            {/* Timeouts & Resources */}
             <Card className="overflow-hidden">
               <div className="flex items-center gap-2 px-5 py-3.5 border-b border-forge-border bg-forge-elevated/20">
                 <Clock size={13} className="text-amber-500" />
@@ -188,9 +202,9 @@ export function SandboxLayer() {
               </div>
               <div className="p-5 space-y-5">
                 {[
-                  { label: 'Timeout',     key: 'timeoutMs',   value: config.timeoutMs,   unit: 'ms',  min: 1000,  max: 30000, step: 500  },
-                  { label: 'Max Memory',  key: 'maxMemoryMb', value: config.maxMemoryMb, unit: 'mb',  min: 64,    max: 1024,  step: 64   },
-                  { label: 'Max CPU',     key: 'maxCpuPct',   value: config.maxCpuPct,   unit: '%',   min: 10,    max: 100,   step: 10   },
+                  { label: 'Timeout',    key: 'timeoutMs',   value: config.timeoutMs,   unit: 'ms', min: 1000, max: 30000, step: 500 },
+                  { label: 'Max Memory', key: 'maxMemoryMb', value: config.maxMemoryMb, unit: 'mb', min: 64,   max: 1024,  step: 64  },
+                  { label: 'Max CPU',    key: 'maxCpuPct',   value: config.maxCpuPct,   unit: '%',  min: 10,   max: 100,   step: 10  },
                 ].map(({ label, key, value, unit, min, max, step }) => (
                   <div key={key}>
                     <div className="flex items-center justify-between mb-2">
@@ -205,7 +219,6 @@ export function SandboxLayer() {
                     </div>
                   </div>
                 ))}
-
                 <div className="flex items-center justify-between pt-1">
                   <div>
                     <div className="text-xs text-forge-secondary">Kill on timeout</div>
@@ -216,14 +229,12 @@ export function SandboxLayer() {
               </div>
             </Card>
 
-            {/* Network */}
             <Card className="overflow-hidden">
               <div className="flex items-center gap-2 px-5 py-3.5 border-b border-forge-border bg-forge-elevated/20">
                 <Wifi size={13} className="text-amber-500" />
                 <span className="text-sm font-semibold text-forge-white">Network Control</span>
               </div>
               <div className="p-5 space-y-4">
-                {/* Mode toggle */}
                 <div className="flex gap-2">
                   {(['none', 'allowlist'] as const).map(mode => (
                     <button key={mode} onClick={() => setConfig(c => ({ ...c, networkMode: mode }))}
@@ -239,8 +250,6 @@ export function SandboxLayer() {
                     </button>
                   ))}
                 </div>
-
-                {/* Allowlist */}
                 {config.networkMode === 'allowlist' && (
                   <div className="space-y-2">
                     <div className="text-[9px] font-bold uppercase tracking-widest text-forge-subtle">Allowed Hosts</div>
@@ -253,9 +262,7 @@ export function SandboxLayer() {
                       </div>
                     ))}
                     <div className="flex gap-2">
-                      <input
-                        value={hostInput}
-                        onChange={e => setHostInput(e.target.value)}
+                      <input value={hostInput} onChange={e => setHostInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && addHost()}
                         placeholder="api.example.com"
                         className="forge-input text-[11px] py-1.5 flex-1" />
@@ -275,7 +282,6 @@ export function SandboxLayer() {
               </div>
             </Card>
 
-            {/* Secret scoping */}
             <Card className="overflow-hidden">
               <div className="flex items-center gap-2 px-5 py-3.5 border-b border-forge-border bg-forge-elevated/20">
                 <Key size={13} className="text-amber-500" />
@@ -313,7 +319,6 @@ export function SandboxLayer() {
           {/* Right: live monitor + logs */}
           <div className="col-span-2 space-y-4">
 
-            {/* Live resource monitor */}
             <Card className="overflow-hidden">
               <div className="flex items-center gap-2 px-5 py-3.5 border-b border-forge-border bg-forge-elevated/20">
                 <Zap size={13} className="text-amber-500" />
@@ -324,42 +329,49 @@ export function SandboxLayer() {
                   </span>
                 )}
               </div>
-              <div className="p-5 grid grid-cols-3 gap-4">
-                {[
-                  {
-                    label: 'Memory',   used: Math.round(config.maxMemoryMb * 0.07),  max: config.maxMemoryMb, unit: 'mb',
-                    color: 'bg-blue-500', warn: 80,
-                  },
-                  {
-                    label: 'CPU',      used: Math.round(config.maxCpuPct   * 0.08),  max: config.maxCpuPct,   unit: '%',
-                    color: 'bg-purple-500', warn: 80,
-                  },
-                  {
-                    label: 'Timeout',  used: Math.round(config.timeoutMs   * 0.064), max: config.timeoutMs,   unit: 'ms',
-                    color: 'bg-amber-400', warn: 70,
-                  },
-                ].map(({ label, used, max, unit, color, warn }) => {
-                  const pct = Math.round((used / max) * 100)
-                  const isWarn = pct >= warn
-                  return (
-                    <div key={label}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-forge-secondary">{label}</span>
-                        <span className={`text-xs font-bold ${isWarn ? 'text-forge-red' : 'text-forge-primary'}`}>
-                          {used}{unit} / {max}{unit}
-                        </span>
+              <div className="p-5 space-y-4">
+
+                {/* Live action row */}
+                <div className="flex items-center gap-3 p-3 bg-forge-elevated/50 border border-forge-border rounded-xl">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'running' ? 'bg-forge-green animate-pulse' : 'bg-forge-subtle'}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-forge-subtle">Acción actual</span>
+                  <code className="text-xs text-amber-400 font-mono ml-auto">
+                    {status === 'running' ? liveStats.action : '—'}
+                  </code>
+                  {status === 'running' && (
+                    <span className="text-[10px] text-forge-subtle">{liveStats.elapsed}s</span>
+                  )}
+                </div>
+
+                {/* Metric bars */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: 'Memoria', used: status === 'running' ? liveStats.mem : 0, max: config.maxMemoryMb, unit: 'mb', color: 'bg-blue-500',    warn: 80 },
+                    { label: 'CPU',     used: status === 'running' ? liveStats.cpu : 0, max: config.maxCpuPct,   unit: '%',  color: 'bg-purple-500',  warn: 80 },
+                    { label: 'Tiempo',  used: status === 'running' ? Math.min(liveStats.elapsed * 1000, config.timeoutMs) : 0, max: config.timeoutMs, unit: 'ms', color: 'bg-amber-400', warn: 70 },
+                  ].map(({ label, used, max, unit, color, warn }) => {
+                    const pct = Math.round((used / max) * 100)
+                    const isWarn = pct >= warn
+                    return (
+                      <div key={label}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-forge-secondary">{label}</span>
+                          <span className={`text-xs font-bold ${isWarn ? 'text-forge-red' : 'text-forge-primary'}`}>
+                            {used}{unit} / {max}{unit}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-forge-elevated rounded-full overflow-hidden">
+                          <motion.div
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.6, ease: 'easeOut' }}
+                            className={`h-full rounded-full ${isWarn ? 'bg-forge-red' : color}`}
+                          />
+                        </div>
+                        <div className="text-[9px] text-forge-subtle mt-1">{pct}% utilized</div>
                       </div>
-                      <div className="h-2 bg-forge-elevated rounded-full overflow-hidden">
-                        <motion.div
-                          animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.6, ease: 'easeOut' }}
-                          className={`h-full rounded-full ${isWarn ? 'bg-forge-red' : color}`}
-                        />
-                      </div>
-                      <div className="text-[9px] text-forge-subtle mt-1">{pct}% utilized</div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Active run context */}
@@ -392,7 +404,6 @@ export function SandboxLayer() {
                 </div>
                 {logsOpen ? <ChevronUp size={13} className="text-forge-subtle" /> : <ChevronDown size={13} className="text-forge-subtle" />}
               </button>
-
               <AnimatePresence>
                 {logsOpen && (
                   <motion.div
