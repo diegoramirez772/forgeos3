@@ -41,10 +41,10 @@ export function ToolGateway() {
   const { runs } = useRunStore()
   const [filter, setFilter] = useState<FilterType>('all')
 
-  // Flatten all tool events with run context
+  // Flatten all tool events with run context — toolEvents puede llegar null de la API
   const allEvents = runs
     .flatMap(r =>
-      r.toolEvents.map(e => ({ ...e, agentName: r.agentName, domain: r.domain }))
+      (r.toolEvents ?? []).map(e => ({ ...e, agentName: r.agentName, domain: r.domain }))
     )
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 

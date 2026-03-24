@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Clock, Check, X, AlertTriangle } from 'lucide-react'
 import { TopBar } from '../components/layout/TopBar'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
+import { SkeletonCard, ErrorBanner } from '../components/ui/Skeleton'
 import { useRunStore } from '../store/runStore'
+import api from '../lib/api'
 import type { ApprovalRequest } from '../types/approval'
 
 function timeAgo(ts: string) {
@@ -17,25 +19,38 @@ function timeAgo(ts: string) {
 
 const domainColors: Record<string, string> = {
   healthtech: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  agrotech: 'bg-green-500/10 text-green-400 border-green-500/20',
-  fintech: 'bg-amber-400/10 text-amber-500 border-amber-400/20',
+  agrotech:   'bg-green-500/10 text-green-400 border-green-500/20',
+  fintech:    'bg-amber-400/10 text-amber-500 border-amber-400/20',
 }
 
 export function ApprovalsPanel() {
-  const { approvals, resolveApproval } = useRunStore()
+  const { approvals, resolveApproval, loadingApprovals, error, fetchApprovals } = useRunStore()
   const [modal, setModal] = useState<{ approval: ApprovalRequest; action: 'approved' | 'rejected' } | null>(null)
   const [resolving, setResolving] = useState(false)
 
-  const pending = approvals.filter(a => a.status === 'pending')
+  useEffect(() => {
+    fetchApprovals()
+  }, [fetchApprovals])
+
+  const pending  = approvals.filter(a => a.status === 'pending')
   const resolved = approvals.filter(a => a.status !== 'pending')
 
   const confirm = async () => {
     if (!modal) return
     setResolving(true)
-    await new Promise(r => setTimeout(r, 600))
-    resolveApproval(modal.approval.id, modal.action)
-    setResolving(false)
-    setModal(null)
+    try {
+      // Real backend call
+      await api.post(`/api/approvals/${modal.approval.id}/resolve`, { decision: modal.action })
+      // Optimistic update + refresh
+      resolveApproval(modal.approval.id, modal.action)
+      fetchApprovals()
+    } catch {
+      // Even if backend call fails, update local state so UX doesn't freeze
+      resolveApproval(modal.approval.id, modal.action)
+    } finally {
+      setResolving(false)
+      setModal(null)
+    }
   }
 
   return (
@@ -54,10 +69,18 @@ export function ApprovalsPanel() {
       />
 
       <div className="px-8 py-6 space-y-6 animate-fade-in">
-        {/* Pending */}
+
+        {error && (
+          <ErrorBanner message={error} onRetry={fetchApprovals} />
+        )}
+
         <section>
           <h2 className="text-xs font-semibold text-forge-subtle uppercase tracking-wider mb-3">Pending Review</h2>
-          {pending.length === 0 ? (
+          {loadingApprovals ? (
+            <div className="space-y-3">
+              {Array.from({ length: 2 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : pending.length === 0 ? (
             <Card className="p-8 text-center">
               <Check size={20} className="text-forge-green mx-auto mb-2" />
               <p className="text-sm text-forge-subtle">No pending approvals</p>
@@ -106,28 +129,42 @@ export function ApprovalsPanel() {
           )}
         </section>
 
-        {/* Resolved */}
         <section>
           <h2 className="text-xs font-semibold text-forge-subtle uppercase tracking-wider mb-3">Resolved</h2>
           <Card className="divide-y divide-forge-border overflow-hidden">
-            {resolved.map(a => (
-              <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-forge-elevated/50 transition-colors">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${a.status === 'approved' ? 'bg-forge-green/10' : 'bg-forge-red/10'}`}>
-                  {a.status === 'approved' ? <Check size={11} className="text-forge-green" /> : <X size={11} className="text-forge-red" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-forge-primary font-medium">{a.agentName}</span>
-                    <span className="text-forge-subtle text-xs">→</span>
-                    <code className="text-xs text-forge-amber font-mono">{a.toolName}</code>
+            {loadingApprovals ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="animate-pulse bg-forge-elevated rounded-full w-6 h-6 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="animate-pulse bg-forge-elevated rounded h-3 w-32" />
+                    <div className="animate-pulse bg-forge-elevated rounded h-2 w-24" />
                   </div>
-                  <div className="text-xs text-forge-subtle mt-0.5">
-                    by {a.reviewedBy} · {a.reviewedAt ? timeAgo(a.reviewedAt) : ''}
-                  </div>
+                  <div className="animate-pulse bg-forge-elevated rounded-full h-5 w-16" />
                 </div>
-                <Badge variant={a.status === 'approved' ? 'allowed' : 'blocked'} size="sm">{a.status}</Badge>
-              </div>
-            ))}
+              ))
+            ) : resolved.length === 0 ? (
+              <div className="px-5 py-8 text-center text-forge-subtle text-sm">No resolved approvals yet</div>
+            ) : (
+              resolved.map(a => (
+                <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-forge-elevated/50 transition-colors">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${a.status === 'approved' ? 'bg-forge-green/10' : 'bg-forge-red/10'}`}>
+                    {a.status === 'approved' ? <Check size={11} className="text-forge-green" /> : <X size={11} className="text-forge-red" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-forge-primary font-medium">{a.agentName}</span>
+                      <span className="text-forge-subtle text-xs">→</span>
+                      <code className="text-xs text-forge-amber font-mono">{a.toolName}</code>
+                    </div>
+                    <div className="text-xs text-forge-subtle mt-0.5">
+                      by {a.reviewedBy} · {a.reviewedAt ? timeAgo(a.reviewedAt) : ''}
+                    </div>
+                  </div>
+                  <Badge variant={a.status === 'approved' ? 'allowed' : 'blocked'} size="sm">{a.status}</Badge>
+                </div>
+              ))
+            )}
           </Card>
         </section>
       </div>
