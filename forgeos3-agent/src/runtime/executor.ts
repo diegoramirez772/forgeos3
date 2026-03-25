@@ -84,7 +84,7 @@ Example: {"summary": "Alert found...", "findings": ["Evidence of larvae"], "risk
     // (aplicada en registry.ts en cada handler)
 
     try {
-      const run = await startRun(agentId, input)
+      const run = await startRun(agentId, domain, input)
       runId = run.id
 
       // Contexto inicial con memoria
@@ -107,7 +107,7 @@ Example: {"summary": "Alert found...", "findings": ["Evidence of larvae"], "risk
         }
 
         const response = await this.anthropic.messages.create({
-          model:      "claude-3-5-sonnet-20241022",
+          model:      "claude-3-haiku-20240307",
           max_tokens: 1024,
           system:     systemPrompt,
           messages,

@@ -20,7 +20,8 @@
     "axios": "^1.13.6",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "openclaw": "^2026.3.23-2"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

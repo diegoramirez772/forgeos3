@@ -1,100 +1,51 @@
-import { useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Mic, MicOff, Send } from 'lucide-react'
+import React, { useState } from 'react';
+import { Mic, Send } from 'lucide-react';
 
 interface SearchBarProps {
-  value: string
-  onChange: (v: string) => void
-  onSubmit: () => void
-  onMicClick: () => void
-  isListening: boolean
-  isLoading: boolean
-  disabled?: boolean
+  onSearch: (query: string) => void;
+  onVoiceStart?: () => void;
+  onVoiceEnd?: () => void;
+  isListening?: boolean;
 }
 
-const QUICK_QUERIES = [
-  '¿Hay alertas del gusano barrenador esta semana?',
-  'Reporte rápido de riesgo actual',
-  '¿Qué señales debo revisar en el ganado?',
-  'Resumen de noticias recientes',
-]
+export function SearchBar({ onSearch, onVoiceStart, onVoiceEnd, isListening }: SearchBarProps) {
+  const [query, setQuery] = useState('');
 
-interface QuickChipsProps {
-  onSelect: (q: string) => void
-  disabled: boolean
-}
-
-export function QuickChips({ onSelect, disabled }: QuickChipsProps) {
-  return (
-    <div className="quick-chips">
-      {QUICK_QUERIES.map((q) => (
-        <motion.button
-          key={q}
-          className="chip"
-          onClick={() => !disabled && onSelect(q)}
-          disabled={disabled}
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.97 }}
-        >
-          {q}
-        </motion.button>
-      ))}
-    </div>
-  )
-}
-
-export function SearchBar({
-  value,
-  onChange,
-  onSubmit,
-  onMicClick,
-  isListening,
-  isLoading,
-  disabled = false,
-}: SearchBarProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const handleSend = () => {
+    if (query.trim()) {
+      onSearch(query);
+      setQuery('');
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      if (!disabled && value.trim()) onSubmit()
-    }
-  }
+    if (e.key === 'Enter') handleSend();
+  };
 
   return (
     <div className="search-box">
-      <div className="search-box__inner">
-        <textarea
-          ref={textareaRef}
+      <div className="search-box__row">
+        <input
+          type="text"
           className="search-box__input"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          placeholder="Pregunta por noticias, alertas o reportes del gusano barrenador..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Consulta noticias, alertas o reportes del gusano barrenador…"
-          rows={1}
-          disabled={disabled}
         />
         <div className="search-box__actions">
-          <motion.button
-            className={`icon-btn ${isListening ? 'icon-btn--active' : ''}`}
-            onClick={onMicClick}
-            disabled={isLoading}
-            whileTap={{ scale: 0.92 }}
-            title={isListening ? 'Detener grabación' : 'Hablar'}
+          <button 
+            className="icon-btn" 
+            onClick={isListening ? onVoiceEnd : onVoiceStart}
+            style={isListening ? { color: '#34d399', borderColor: '#34d399' } : {}}
           >
-            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
-          </motion.button>
-
-          <motion.button
-            className="send-btn"
-            onClick={onSubmit}
-            disabled={disabled || !value.trim()}
-            whileTap={{ scale: 0.93 }}
-          >
-            <Send size={16} />
-          </motion.button>
+            <Mic size={24} />
+          </button>
+          <button className="primary-btn" onClick={handleSend}>
+            Consultar <Send size={18} style={{ marginLeft: 8, display: 'inline-block', verticalAlign: 'middle' }} />
+          </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

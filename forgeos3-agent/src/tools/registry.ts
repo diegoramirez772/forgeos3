@@ -1,3 +1,4 @@
+import axios from "axios"
 import { supabase } from "../adapter/openclawAdapter"
 
 export interface ToolDefinition {
@@ -123,6 +124,17 @@ export const TOOLS: Record<string, ToolDefinition[]> = {
           query:        { type: "string" }
         },
         required: ["expertDomain", "query"]
+      }
+    },
+    {
+      name: "search_news",
+      description: "Busca noticias recientes y REALES en internet sobre un tema. ÚSALA SIEMPRE para no inventar (alucinar) información sobre casos o alertas.",
+      input_schema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Término de búsqueda (ej 'gusano barrenador México')" }
+        },
+        required: ["query"]
       }
     }
   ],
@@ -279,5 +291,28 @@ export const TOOL_HANDLERS: Record<string, (args: any) => Promise<any>> = {
     amount:    args.amount,
     currency:  args.currency || "USD",
     timestamp: new Date().toISOString()
-  })
+  }),
+
+  // ── HACKATHON LIVE SEARCH ──────────────────────────────────────────────
+  search_news: async (args) => {
+    try {
+      const gnewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(args.query)}&hl=es-419&gl=MX&ceid=MX:es-419`;
+      const { data } = await axios.get(gnewsUrl);
+      const items = data.split('<item>').slice(1, 4);
+      const news = items.map((item: string) => {
+        const titleMatch = item.match(/<title>(.*?)<\/title>/);
+        const dateMatch = item.match(/<pubDate>(.*?)<\/pubDate>/);
+        const title = titleMatch ? titleMatch[1].replace("<![CDATA[", "").replace("]]>", "") : "Noticia";
+        const date = dateMatch ? dateMatch[1] : "Reciente";
+        return `${title} (${date})`;
+      });
+      return {
+        query: args.query,
+        source: "Google News Live",
+        results: news.length > 0 ? news : ["Sin noticias recientes."]
+      };
+    } catch (err: any) {
+      return { error: "No se pudo consultar internet", details: err.message };
+    }
+  }
 }
