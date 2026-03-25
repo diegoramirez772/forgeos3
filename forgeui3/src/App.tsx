@@ -6,6 +6,7 @@ import { SignIn }      from './pages/SignIn'
 import { SignUp }      from './pages/SignUp'
 import { Gallery }     from './pages/Gallery'
 import { AgentCanvas } from './pages/AgentCanvas'
+import { AgentUIBuilder } from './pages/AgentUIBuilder'
 
 function Protected({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true)
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/signup"         element={<SignUp />}     />
           <Route path="/gallery"        element={<Protected><Gallery /></Protected>}     />
           <Route path="/canvas/:domain" element={<Protected><AgentCanvas /></Protected>} />
+          <Route path="/ui-builder"     element={<Protected><AgentUIBuilder /></Protected>} />
           <Route path="*"               element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

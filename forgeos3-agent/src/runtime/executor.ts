@@ -80,6 +80,19 @@ Your FINAL response MUST be a structured JSON object (NOT in markdown blocks, ju
 Example: {"summary": "Alert found...", "findings": ["Evidence of larvae"], "riskLevel": "Alto", "recommendation": "Treat immediately"}`
     }
 
+    if (options.mode === 'ui_builder') {
+      systemPrompt = `You are an expert UI/UX developer and designer. 
+When given a UI description, you generate beautiful, complete, self-contained HTML files with embedded CSS and JS.
+RULES:
+- Return ONLY a single \`\`\`html ... \`\`\` code block, nothing else before or after
+- Use dark modern design (dark backgrounds, subtle neon accents, glassmorphism)
+- Include realistic example data — never leave fields empty
+- Use CSS Grid or Flexbox for layout
+- Add smooth CSS transitions and hover effects
+- Everything must be in one self-contained HTML file (no external CDN)
+- Make it look PREMIUM and production-ready`
+    }
+
     // ── TAREA 7: Validación de entradas con Zod ──────────────────────────────
     // (aplicada en registry.ts en cada handler)
 
@@ -108,7 +121,7 @@ Example: {"summary": "Alert found...", "findings": ["Evidence of larvae"], "risk
 
         const response = await this.anthropic.messages.create({
           model:      "claude-3-haiku-20240307",
-          max_tokens: 1024,
+          max_tokens: options.mode === 'ui_builder' ? 4096 : 1024,
           system:     systemPrompt,
           messages,
           tools:      TOOLS[domain] as any,
