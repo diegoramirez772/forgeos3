@@ -1,135 +1,149 @@
-# ForgeOS3 — Agent (OpenClaw)
+<div align="center">
 
-Implementación del RuntimeAdapter de ForgeOS3 sobre OpenClaw. Incluye los 3 escenarios demo del hackathon: Health, Gov y Marketing.
+<img src="https://img.shields.io/badge/Express-5.x-000000?style=for-the-badge&logo=express&logoColor=white" />
+<img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
+<img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+<img src="https://img.shields.io/badge/Security-Helmet%20%2B%20JWT-red?style=for-the-badge" />
+<img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 
----
+# ⚙️ ForgeOS3 Backend
 
-## Stack
+**Production-grade Governance API for the ForgeOS3 AI Platform.**
 
-- **Node.js** + **TypeScript**
-- **OpenClaw** — runtime del agente
-- **Axios** — llamadas al backend de ForgeOS3
+[Getting Started](#-getting-started) · [API](#-api-overview) · [Security](#-security-architecture) · [Environment](#-environment-variables)
 
----
-
-## Estructura
-
-```
-src/
-├── adapter/
-│   └── openclawAdapter.ts   # implementa la interfaz RuntimeAdapter
-├── scenarios/
-│   ├── healthScenario.ts    # demo Health — summarize, checklist, diagnose(bloqueado)
-│   ├── govScenario.ts       # demo Gov — classify, route, write_external(approval)
-│   └── marketingScenario.ts # demo Marketing — summarize, draft, publish(approval)
-├── tools/
-│   ├── healthTools.ts       # definición de tools del dominio health
-│   ├── govTools.ts          # definición de tools del dominio gov
-│   └── marketingTools.ts    # definición de tools del dominio marketing
-└── index.ts
-```
+</div>
 
 ---
 
-## Setup
+## 📖 Overview
+
+`forgeos3-backend` is the central API layer of ForgeOS3. It persists every agent run, enforces governance policies, manages the human approval queue, and provides a full auditable history of all AI decisions.
+
+> **Every tool call an agent makes is evaluated, logged, and retrievable — forever.**
+
+---
+
+## 🚀 Getting Started
 
 ```bash
-cd forgeos3-agent
+cd forgeos3-backend
+cp .env.example .env
 npm install
-cp .env.example .env    # llenar con la URL del backend
+npm run dev     # → http://localhost:3001
 ```
 
-Asegúrate de que el backend esté corriendo antes de ejecutar los escenarios.
-
----
-
-## Variables de entorno
-
-```
-FORGEOS3_API_URL=http://localhost:3001
-AGENT_API_KEY=your_agent_key
-```
-
----
-
-## Correr los escenarios demo
-
+**Health check:**
 ```bash
-npm run demo:health       # Escenario A — Health
-npm run demo:gov          # Escenario B — Gov
-npm run demo:marketing    # Escenario C — Marketing
+curl http://localhost:3001/health
+```
+
+```json
+{
+  "status": "ok",
+  "service": "forgeos3-backend",
+  "database": { "status": "connected", "latency_ms": 12 },
+  "uptime": 3600
+}
 ```
 
 ---
 
-## Escenarios
+## 📡 API Overview
 
-### Escenario A — Health
-**Input:** `"Summarize this patient intake and create a safe follow-up checklist"`
+### 🔓 Public Routes
 
-| Tool | Decisión esperada |
-|---|---|
-| `summarize` | ✅ allowed |
-| `checklist` | ✅ allowed |
-| `diagnose` | ❌ blocked |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/login` | Sign in, returns JWT |
+| `POST` | `/api/auth/register` | Create new account |
+| `GET` | `/health` | Platform health check |
 
----
+### 🤖 Agent Routes _(API Key: `Authorization: Bearer <AGENT_API_KEY>`)_
 
-### Escenario B — Gov
-**Input:** `"Analyze this public request and route it to the right workflow"`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/runs/start` | Register a new agent run in DB |
+| `POST` | `/api/runs/finish` | Close run with final status + output |
+| `POST` | `/api/tools/evaluate` | OpenClaw governance policy check |
+| `POST` | `/api/tools/log` | Log tool execution result |
+| `POST` | `/api/risk/evaluate-loop` | Loop risk scoring (0–100) |
 
-| Tool | Decisión esperada |
-|---|---|
-| `classify` | ✅ allowed |
-| `route` | ✅ allowed |
-| `write_external` | ⏳ approval required |
+### 🔐 Protected Routes _(JWT required)_
 
----
-
-### Escenario C — Marketing
-**Input:** `"Generate a campaign workflow and prepare a content draft"`
-
-| Tool | Decisión esperada |
-|---|---|
-| `summarize` | ✅ allowed |
-| `draft` | ✅ allowed |
-| `publish` | ⏳ approval required |
-
----
-
-### Escenario D — Loop Guard
-El agente repite la misma tool múltiples veces. El risk score sube hasta activar safe mode o bloqueo automático.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/agents` | List deployed agents |
+| `GET/POST` | `/api/runs` | Run history |
+| `GET/POST` | `/api/approvals` | Human approval queue |
+| `POST` | `/api/approvals/:id/approve` | Approve a pending action |
+| `POST` | `/api/approvals/:id/reject` | Reject a pending action |
+| `GET` | `/api/dashboard/stats` | Platform KPIs |
+| `GET` | `/api/audit` | Immutable audit log |
+| `GET` | `/api/workspace` | Workspace management |
 
 ---
 
-## RuntimeAdapter Interface
+## 🛡️ Security Architecture
 
-Este es el contrato que implementa el adapter. Cada método llama al backend de Diego:
-
-```typescript
-startRun(input)          → POST /api/runs/start
-beforeToolCall(intent)   → POST /api/tools/evaluate   ← el más importante
-afterToolCall(result)    → POST /api/tools/log
-finishRun(result)        → POST /api/runs/finish
+```
+Incoming Request
+       │
+       ├─ helmet()              ← HTTP security headers
+       ├─ cors()                ← Whitelist: :5173, :5174, FRONTEND_URL
+       ├─ rateLimit()           ← 300 req/15min global
+       │                          20 req/15min on /auth
+       │                          100 req/min on agent routes
+       ├─ morgan()              ← Request logging (Winston)
+       ├─ sanitizeInput()       ← XSS + injection prevention
+       │
+       └─ authMiddleware()
+             ├─ AGENT_API_KEY   ← Server-to-server (agent)
+             ├─ Supabase token  ← User sessions (frontend)
+             └─ Internal JWT    ← Fallback for API clients
 ```
 
-**El flujo es:**
-1. `startRun` — registra el inicio del run
-2. Por cada tool: `beforeToolCall` — consulta el Policy Engine
-3. Si la decisión es `allowed` → ejecuta la tool
-4. Si es `blocked` → no ejecuta, registra el evento
-5. Si es `approval_required` → pausa y espera resolución
-6. `afterToolCall` — registra el resultado
-7. `finishRun` — cierra el run
+---
+
+## 🗄️ Database Schema (Key Tables)
+
+| Table | Purpose |
+|-------|---------|
+| `agent_runs` | Full run lifecycle (start → finish) |
+| `tool_events` | Every tool call + governance decision |
+| `approvals` | Human-in-the-loop approval requests |
+| `audit_log` | Immutable event history |
+| `agents` | Registered agent configurations |
+| `domain_profiles` | Domain-specific governance profiles |
 
 ---
 
-## Comandos
+## ⚙️ Environment Variables
 
-```bash
-npm run dev              # development mode
-npm run build            # compilar TypeScript
-npm run demo:health      # correr escenario Health
-npm run demo:gov         # correr escenario Gov
-npm run demo:marketing   # correr escenario Marketing
-```
+| Variable | Required | Default | Description |
+|----------|:--------:|---------|-------------|
+| `PORT` | — | `3001` | Server port |
+| `SUPABASE_URL` | ✅ | — | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | ✅ | — | Service role key |
+| `JWT_SECRET` | ✅ | — | JWT signing secret |
+| `AGENT_API_KEY` | ✅ | — | Agent server pre-shared key |
+| `FRONTEND_URL` | — | — | Production frontend URL (CORS) |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js 20 + TypeScript 5 |
+| Framework | Express 5 |
+| Database | Supabase (PostgreSQL) |
+| Auth | JWT + Supabase Auth |
+| Security | Helmet, express-rate-limit, DOMPurify |
+| Logging | Winston + Morgan |
+
+---
+
+## 📄 License
+
+MIT © ForgeOS Team 2026

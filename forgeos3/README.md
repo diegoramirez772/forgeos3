@@ -1,114 +1,127 @@
-# ForgeOS3 — Frontend
+<div align="center">
 
-React + Vite + TypeScript dashboard for the ForgeOS3 governance platform.
+<img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
+<img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" />
+<img src="https://img.shields.io/badge/Zustand-State-FF6B6B?style=for-the-badge" />
+<img src="https://img.shields.io/badge/OpenClaw-Connected-orange?style=for-the-badge" />
+<img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" />
 
----
+# 🧠 ForgeOS3 Console
 
-## Stack
+**The AI Governance Operations Center for the ForgeOS3 platform.**  
+*Monitor · Approve · Audit · Configure — in real time.*
 
-- **React 19** + **TypeScript** + **Vite**
-- **Tailwind CSS** — design system con forge theme
-- **Zustand** — estado global (auth, runs, agents)
-- **Framer Motion** — animaciones
-- **Recharts** — gráficas
-- **React Router DOM** — navegación
-- **Lucide React** — iconografía
+[Modules](#-modules) · [Quick Start](#-quick-start) · [Concepts](#-key-concepts) · [Tech Stack](#-tech-stack)
 
----
-
-## Estructura
-
-```
-src/
-├── components/
-│   ├── layout/          # AuthLayout, Sidebar, TopBar
-│   └── ui/              # Badge, Button, Card, Modal, Toggle
-├── pages/
-│   ├── Landing.tsx
-│   ├── SignIn.tsx
-│   ├── SignUp.tsx
-│   ├── Dashboard.tsx
-│   ├── BuilderConsole.tsx
-│   ├── RegistryManager.tsx
-│   ├── PolicyStudio.tsx
-│   ├── ToolGateway.tsx
-│   ├── LoopGuard.tsx
-│   ├── SandboxLayer.tsx
-│   ├── SentinelStudio.tsx
-│   ├── AuditTrail.tsx
-│   ├── ApprovalsPanel.tsx
-│   └── Settings.tsx
-├── store/
-│   ├── authStore.ts     # auth state
-│   ├── agentStore.ts    # agents state
-│   └── runStore.ts      # runs + approvals state
-├── types/               # Agent, Run, Approval, Policy
-├── lib/
-│   └── constants.ts     # mock data, domain profiles, tool packs
-└── App.tsx              # rutas
-```
+</div>
 
 ---
 
-## Setup
+## 📖 Overview
+
+**ForgeOS3** is the operator control plane of the ForgeOS platform. It gives teams complete visibility into every AI agent run, tool decision, governance event, and pending human approval — live.
+
+Built for the era where **AI agents act autonomously** but humans remain in control.
+
+---
+
+## 🗂️ Modules
+
+| Module | Route | Description |
+|--------|-------|-------------|
+| 📊 **Dashboard** | `/` | Live KPIs, activity feed, Loop Guard scores, agent status |
+| 🏗️ **Builder** | `/builder` | Deploy and configure new AI agents |
+| 🛡️ **Sentinel Studio** | `/sentinel` | Inspect active and historical runs in detail |
+| ⚖️ **Policy Studio** | `/policy` | Configure governance rules per domain |
+| ✅ **Approvals** | `/approvals` | Human-in-the-loop approval queue |
+| 📦 **Registry** | `/registry` | Manage tool packs, domain profiles, policy presets |
+| 🔍 **Audit Log** | `/audit` | Full immutable history of all AI actions |
+| ⚙️ **Settings** | `/settings` | Workspace and account configuration |
+
+---
+
+## 🚀 Quick Start
 
 ```bash
 cd forgeos3
+cp .env.example .env
 npm install
-npm run dev
+npm run dev     # → http://localhost:5174 (or :5173 if available)
 ```
 
-Abre [http://localhost:5173](http://localhost:5173)
+> Requires `forgeos3-backend` on port 3001 and `forgeos3-agent` on port 4000.
 
 ---
 
-## Variables de entorno
+## 🔑 Key Concepts
 
-Crea un `.env` en la raíz de `forgeos3/`:
+### 🔄 Governance Pipeline
+Every agent tool call triggers a 3-phase pipeline visible in the console:
 
 ```
-VITE_API_URL=http://localhost:3001
+Agent requests tool
+        │
+        ▼
+  [1] EVALUATE ─── OpenClaw policy engine
+        │           → allowed / blocked / approval_required
+        │
+        ▼ (if approval_required)
+  [2] APPROVE ──── Operator notified in /approvals panel
+        │           → Approve or Reject with reason
+        │
+        ▼
+  [3] LOG ──────── Result written to immutable audit trail
 ```
+
+### 📈 Loop Guard
+The **Loop Guard** widget monitors real-time risk scores per run (0–100):
+- `0–15` → 🟢 Normal
+- `16–30` → 🟡 Caution
+- `31–100` → 🔴 Terminated / Safe Mode
+
+### 🔗 OpenClaw Status
+The header shows `OpenClaw ● live` when the agent server is reachable.  
+Polled every **5 seconds** for real-time status.
 
 ---
 
-## Estado actual
+## 👥 Roles & Access
 
-Todas las páginas están construidas con **mock data**. La integración con el backend se hace sustituyendo los stores de Zustand para que consuman la API real en vez de los mocks.
-
-### Stores a conectar con API
-
-| Store | Qué conectar |
-|---|---|
-| `authStore` | `login()`, `signup()`, `logout()` → `/api/auth` |
-| `agentStore` | `agents` → `GET /api/agents` |
-| `runStore` | `runs`, `approvals` → `GET /api/runs`, `GET /api/approvals` |
+| Role | Access Level |
+|------|-------------|
+| `admin` | Full platform including user management |
+| `government` | Full platform + analytics |
+| `producer` | Dashboard, canvases, AI chat, trámites |
+| `union_ganadera` | Trámites panel and reports |
 
 ---
 
-## Páginas
+## ⚙️ Environment Variables
 
-| Ruta | Página | Descripción |
-|---|---|---|
-| `/dashboard` | Dashboard | Overview general, métricas, runs recientes |
-| `/builder` | Builder Console | Crear y deployar agentes |
-| `/registry` | Registry Manager | Domain profiles, tool packs, policy presets |
-| `/policy` | Policy Studio | Configurar reglas por dominio y tool |
-| `/gateway` | Tool Gateway | Log de intercepts en tiempo real |
-| `/loopguard` | Loop Guard | Monitor de riesgo y kill switch |
-| `/sandbox` | Sandbox Layer | Entorno aislado, timeouts, red, secrets |
-| `/sentinel` | Sentinel Studio | Runs activos y tool timeline |
-| `/audit` | Audit Trail | Log institucional completo |
-| `/approvals` | Approvals Panel | Aprobar o rechazar tool calls |
-| `/settings` | Settings | Runtimes, API key, organización |
+| Variable | Required | Description |
+|----------|:--------:|-------------|
+| `VITE_API_URL` | ✅ | Backend URL (`http://localhost:3001`) |
+| `VITE_AGENT_URL` | ✅ | Agent server URL (`http://localhost:4000`) |
+| `SUPABASE_URL` | ✅ | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | ✅ | Supabase service key |
+| `JWT_SECRET` | ✅ | JWT signing secret |
 
 ---
 
-## Comandos
+## 🛠️ Tech Stack
 
-```bash
-npm run dev      # desarrollo
-npm run build    # build para producción
-npm run lint     # linter
-npm run preview  # preview del build
-```
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 18 + TypeScript + Vite |
+| Styling | Tailwind CSS (forge dark theme) |
+| Animation | Framer Motion |
+| Charts | Recharts |
+| State | Zustand (auth, agents, runs, approvals, dashboard) |
+| Icons | Lucide React |
+| Database | Supabase (real-time subscriptions) |
+
+---
+
+## 📄 License
+
+MIT © ForgeOS Team 2026
