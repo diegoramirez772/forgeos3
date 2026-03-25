@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Cpu, Archive, Shield, Eye, CheckSquare,
   Settings, Zap, LogOut, GitBranch, RefreshCw, BookOpen,
   ChevronRight, ChevronsLeft, ChevronsRight, Menu, X, Box,
-  ChevronDown, Skull
+  Skull, Activity
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useAgentStore } from '../../store/agentStore'
@@ -25,6 +25,7 @@ const GOVERNANCE = [
 
 const OBSERVABILITY = [
   { to: '/sentinel', icon: Eye, label: 'Sentinel' },
+  { to: '/security-pulse', icon: Activity, label: 'Security Pulse' },
   { to: '/audit', icon: BookOpen, label: 'Audit Trail' },
   { to: '/approvals', icon: CheckSquare, label: 'Approvals' },
 ]

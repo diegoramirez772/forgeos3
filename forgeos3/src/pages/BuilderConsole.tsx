@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, Check, Zap, Shield, AlertTriangle, Lock } from 'lucide-react'
 import { Toggle } from '../components/ui/Toggle'
-import { DOMAIN_PROFILES, TOOL_PACKS, POLICY_PRESETS } from '../lib/constants'
 import type { DomainProfile, RiskMode } from '../types/agent'
 import { useAgentStore } from '../store/agentStore'
 
@@ -38,32 +37,47 @@ export function BuilderConsole() {
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [domain, setDomain] = useState<DomainProfile>('healthtech')
-  const [toolPackId, setToolPackId] = useState('tp-healthtech')
-  const [policyId, setPolicyId] = useState('pp-medium')
+  const [domain, setDomain] = useState<DomainProfile | ''>('')
+  const [toolPackId, setToolPackId] = useState<string>('')
+  const [policyId, setPolicyId] = useState<string>('')
   const [riskMode, setRiskMode] = useState<RiskMode>('safe')
   const [approvals, setApprovals] = useState<string[]>([])
   const [deploying, setDeploying] = useState(false)
   const [deployed, setDeployed] = useState(false)
   const [deployError, setDeployError] = useState<string | null>(null)
-  const { createAgent, isLive, checkHealth } = useAgentStore()
+  const { createAgent, isLive, checkHealth, domainProfiles, toolPacks, policyPresets } = useAgentStore()
   const navigate = useNavigate()
 
-  // Poll agent health so the badge is always accurate
+  // Find defaults once data is loaded
+  useEffect(() => {
+    if (domainProfiles.length > 0 && !domain) {
+      setDomain(domainProfiles[0].key)
+      const firstPack = toolPacks.find(p => p.domain === domainProfiles[0].key)
+      if (firstPack) setToolPackId(firstPack.id)
+    }
+  }, [domainProfiles, domain, toolPacks])
+
+  useEffect(() => {
+    if (policyPresets.length > 0 && !policyId) {
+      setPolicyId(policyPresets[0].id)
+    }
+  }, [policyPresets, policyId])
+
+  // Poll agent health
   useEffect(() => {
     checkHealth()
     const iv = setInterval(checkHealth, 5000)
     return () => clearInterval(iv)
   }, [checkHealth])
 
-  const availableToolPacks = TOOL_PACKS.filter(p => p.domain === domain)
-  const selectedPack = TOOL_PACKS.find(p => p.id === toolPackId) ?? availableToolPacks[0]
-  const selectedPolicy = POLICY_PRESETS.find(p => p.id === policyId)
-  const selectedDomain = DOMAIN_PROFILES.find(d => d.key === domain)
+  const availableToolPacks = toolPacks.filter(p => p.domain === domain)
+  const selectedPack = toolPacks.find(p => p.id === toolPackId) ?? availableToolPacks[0]
+  const selectedPolicy = policyPresets.find(p => p.id === policyId)
+  const selectedDomain = domainProfiles.find(d => d.key === domain)
 
   const handleDomainChange = (newDomain: DomainProfile) => {
     setDomain(newDomain)
-    const defaultPack = TOOL_PACKS.find(p => p.domain === newDomain)
+    const defaultPack = toolPacks.find(p => p.domain === newDomain)
     if (defaultPack) setToolPackId(defaultPack.id)
   }
 
@@ -87,7 +101,7 @@ export function BuilderConsole() {
         name,
         description,
         runtime: 'openclaw',
-        domainProfile: domain,
+        domainProfile: domain as DomainProfile,
         toolPackId: selectedPack?.id ?? toolPackId,
         policyPresetId: policyId,
         riskMode,
@@ -242,7 +256,7 @@ export function BuilderConsole() {
               <div>
                 <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide mb-3 block">Domain</label>
                 <div className="grid grid-cols-2 gap-3">
-                  {DOMAIN_PROFILES.map(d => {
+                  {domainProfiles.map(d => {
                     const s = DOMAIN_STYLE[d.key] ?? DOMAIN_STYLE['custom']
                     const active = domain === d.key
                     return (
@@ -305,7 +319,7 @@ export function BuilderConsole() {
               <div>
                 <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide mb-3 block">Policy Preset</label>
                 <div className="space-y-2">
-                  {POLICY_PRESETS.map(p => (
+                  {policyPresets.map(p => (
                     <div key={p.id} onClick={() => setPolicyId(p.id)}
                       className={`p-4 rounded-2xl border cursor-pointer transition-all ${policyId === p.id ? 'border-amber-400/40 bg-amber-400/5' : 'border-forge-border bg-forge-surface hover:border-forge-line'}`}>
                       <div className="flex items-center justify-between mb-2">
@@ -388,7 +402,7 @@ export function BuilderConsole() {
                 ].map(({ label, value, highlight }, i) => (
                   <div key={label} className={`flex items-center justify-between px-5 py-3.5 border-b border-forge-border/50 last:border-0 ${i % 2 === 0 ? '' : 'bg-forge-elevated/20'}`}>
                     <span className="text-xs text-forge-subtle font-medium">{label}</span>
-                    <span className={`text-sm font-semibold capitalize ${highlight ? 'text-amber-400' : 'text-forge-primary'}`}>{value}</span>
+                    <span className={`text-sm font-semibold capitalize ${highlight ? 'text-amber-400' : 'text-forge-primary'}`}>{value || '—'}</span>
                   </div>
                 ))}
               </div>

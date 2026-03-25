@@ -93,7 +93,7 @@ app.get('/health', async (_req, res) => {
 
 // ── Routes — Public ──────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRouter)
-app.use('/api',      registryRouter)
+// registryRouter now handles everything under /api/dashboard for consistency
 
 // ── Routes — Protected (JWT required) ────────────────────────
 app.use('/api/agents',    authMiddleware, agentsRouter)
@@ -101,7 +101,7 @@ app.use('/api/runs',      authMiddleware, agentLimiter, runsRouter)
 app.use('/api/tools',     authMiddleware, agentLimiter, toolsRouter)
 app.use('/api/approvals', authMiddleware, approvalsRouter)
 app.use('/api/sandbox',   authMiddleware, sandboxRouter)
-app.use('/api/dashboard', authMiddleware, dashboardRouter)
+app.use('/api/dashboard', authMiddleware, dashboardRouter, registryRouter)
 app.use('/api/audit',     authMiddleware, auditRouter)
 app.use('/api/workspace', authMiddleware, workspaceRouter)
 

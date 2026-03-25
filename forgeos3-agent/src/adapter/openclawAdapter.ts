@@ -35,10 +35,10 @@ function headers() {
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 // ─── START RUN ───────────────────────────────────────────────────────────────
-export async function startRun(agent: string, input: string): Promise<{ id: string }> {
+export async function startRun(agent: string, domain: string, input: string): Promise<{ id: string }> {
   try {
     const res = await axios.post(`${API_URL}/api/runs/start`,
-      { agentId: agent, agentName: agent, domain: inferDomain(agent), input },
+      { agentId: agent, agentName: agent, domain, input },
       { timeout: 4000, headers: headers() }
     )
     log("🚀", `Starting run: ${agent}`, c.cyan)
@@ -57,17 +57,17 @@ export async function beforeToolCall(
   toolName: string,
   domain: string,
   input: Record<string, unknown> = {}
-): Promise<"allowed" | "blocked" | "approval_required"> {
+): Promise<{ decision: "allowed" | "blocked" | "approval_required"; toolEventId: string }> {
   const start = Date.now()
   try {
     const res = await axios.post(`${API_URL}/api/tools/evaluate`,
       { runId, toolName, domain, input },
       { timeout: 4000, headers: headers() }
     )
-    const decision: string = res.data.decision
+    const { decision, toolEventId } = res.data
     const ms = Date.now() - start
     printToolDecision(toolName, decision, res.data.reason, ms, "real")
-    return decision as any
+    return { decision: decision as any, toolEventId }
   } catch (err) {
     log("🛑", `Failed to evaluate tool: ${err}`, c.red)
     throw new Error('ForgeOS3 API unavailable - beforeToolCall failed')
@@ -76,14 +76,14 @@ export async function beforeToolCall(
 
 // ─── AFTER TOOL CALL ─────────────────────────────────────────────────────────
 export async function afterToolCall(
-  runId: string,
+  toolEventId: string,
   toolName: string,
   output: unknown,
   durationMs: number
 ): Promise<void> {
   try {
     await axios.post(`${API_URL}/api/tools/log`,
-      { runId, toolName, output, durationMs },
+      { toolEventId, output, durationMs },
       { timeout: 4000, headers: headers() }
     )
     log("📝", `Tool result logged (real) — ${toolName} (${durationMs}ms)`, c.dim as any)
@@ -119,10 +119,8 @@ export async function requestApproval(
     const approvalId = createRes.data.id
     log("⏳", `Waiting for operator decision... (id: ${approvalId})`, c.yellow)
 
-    // Notify External (Pro Feature)
     try {
       log("📱", "Sending External Notification to Mobile Operator...", "#3b82f6" as any)
-      // Simulate real hook call
       await axios.post("https://webhook.site/dummy-hook", { 
         event: "APPROVAL_REQUIRED", 
         agent: meta.agentName, 

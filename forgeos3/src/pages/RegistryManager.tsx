@@ -39,8 +39,15 @@ export function RegistryManager() {
   const [error, setError] = useState<string | null>(null)
   const [editTarget, setEditTarget] = useState<EditTarget>(null)
   const [showNewModal, setShowNewModal] = useState(false)
+  
+  // Form State
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
+  const [editKey, setEditKey] = useState('')
+  const [editDomain, setEditDomain] = useState('healthtech')
+  const [editLevel, setEditLevel] = useState('medium')
+  const [editStrictness, setEditStrictness] = useState(3)
+  
   const [saving, setSaving] = useState(false)
 
   const fetchAll = async () => {
@@ -48,13 +55,13 @@ export function RegistryManager() {
     setError(null)
     try {
       const [domainsRes, packsRes, policiesRes] = await Promise.all([
-        api.get<{ data: DomainProfileConfig[] }>('/api/domain-profiles'),
-        api.get<{ data: ToolPack[] }>('/api/tool-packs'),
-        api.get<{ data: PolicyPreset[] }>('/api/policy-presets'),
+        api.get<DomainProfileConfig[]>('/api/dashboard/domain-profiles'),
+        api.get<ToolPack[]>('/api/dashboard/tool-packs'),
+        api.get<PolicyPreset[]>('/api/dashboard/policy-presets'),
       ])
-      setDomains(domainsRes.data.data ?? [])
-      setPacks((packsRes.data.data ?? []).map(p => ({ ...p, tools: p.tools ?? [] })))
-      setPolicies(policiesRes.data.data ?? [])
+      setDomains(domainsRes.data ?? [])
+      setPacks((packsRes.data ?? []).map(p => ({ ...p, tools: p.tools ?? [] })))
+      setPolicies(policiesRes.data ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load registry')
     } finally {
@@ -81,22 +88,78 @@ export function RegistryManager() {
     if (!editTarget) return
     setSaving(true)
     try {
+      const payload = { name: editName, description: editDesc }
       if (editTarget.kind === 'domain') {
-        await api.patch(`/api/domain-profiles/${editTarget.item.id}`, { name: editName, description: editDesc })
-        setDomains(prev => prev.map(d => d.id === editTarget.item.id ? { ...d, name: editName, description: editDesc } : d))
+        await api.patch(`/api/dashboard/domain-profiles/${editTarget.item.id}`, payload)
       } else if (editTarget.kind === 'pack') {
-        await api.patch(`/api/tool-packs/${editTarget.item.id}`, { name: editName, description: editDesc })
-        setPacks(prev => prev.map(p => p.id === editTarget.item.id ? { ...p, name: editName, description: editDesc } : p))
+        await api.patch(`/api/dashboard/tool-packs/${editTarget.item.id}`, payload)
       } else if (editTarget.kind === 'policy') {
-        await api.patch(`/api/policy-presets/${editTarget.item.id}`, { name: editName, description: editDesc })
-        setPolicies(prev => prev.map(p => p.id === editTarget.item.id ? { ...p, name: editName, description: editDesc } : p))
+        await api.patch(`/api/dashboard/policy-presets/${editTarget.item.id}`, payload)
       }
+      await fetchAll()
       setEditTarget(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
+  }
+
+  const createNew = async () => {
+    setSaving(true)
+    try {
+      if (tab === 0) {
+        await api.post('/api/dashboard/domain-profiles', { 
+          name: editName, 
+          description: editDesc, 
+          key: editKey || editName.toLowerCase().replace(/\s+/g, '_'),
+          icon: '◎',
+          color: 'gray'
+        })
+      } else if (tab === 1) {
+        await api.post('/api/dashboard/tool-packs', { 
+          name: editName, 
+          description: editDesc, 
+          domain: editDomain 
+        })
+      } else if (tab === 2) {
+        await api.post('/api/dashboard/policy-presets', { 
+          name: editName, 
+          description: editDesc, 
+          level: editLevel, 
+          strictness: editStrictness 
+        })
+      }
+      await fetchAll()
+      setShowNewModal(false)
+      resetForm()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteItem = async (kind: string, id: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return
+    setLoading(true)
+    try {
+      await api.delete(`/api/dashboard/${kind === 'domain' ? 'domain-profiles' : kind === 'pack' ? 'tool-packs' : 'policy-presets'}/${id}`)
+      await fetchAll()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setEditName('')
+    setEditDesc('')
+    setEditKey('')
+    setEditDomain('healthtech')
+    setEditLevel('medium')
+    setEditStrictness(3)
   }
 
   return (
@@ -109,7 +172,7 @@ export function RegistryManager() {
         <div className="flex items-center gap-3">
           {loading && <Spinner size="sm" />}
           <button
-            onClick={() => setShowNewModal(true)}
+            onClick={() => { resetForm(); setShowNewModal(true) }}
             className="flex items-center gap-1.5 px-4 py-2 bg-amber-400 text-black text-xs font-bold rounded-xl hover:bg-amber-300 transition-all"
             style={{ boxShadow: '0 0 14px rgba(245,158,11,0.2)' }}>
             <Plus size={12} /> New
@@ -161,11 +224,18 @@ export function RegistryManager() {
                         <div className={`w-10 h-10 rounded-xl bg-forge-elevated border border-forge-border flex items-center justify-center text-xl ${s.icon}`}>
                           {d.icon}
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEdit({ kind: 'domain', item: d }) }}
-                          className="p-1.5 text-forge-subtle hover:text-forge-primary rounded-lg hover:bg-forge-elevated transition-colors opacity-0 group-hover:opacity-100">
-                          <Edit2 size={13} />
-                        </button>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEdit({ kind: 'domain', item: d }) }}
+                            className="p-1.5 text-forge-subtle hover:text-forge-primary rounded-lg hover:bg-forge-elevated transition-colors">
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteItem('domain', d.id) }}
+                            className="p-1.5 text-forge-subtle hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors">
+                            <X size={13} />
+                          </button>
+                        </div>
                       </div>
                       <h3 className="text-sm font-bold text-forge-white mb-1">{d.name}</h3>
                       <p className="text-xs text-forge-subtle leading-relaxed mb-4">{d.description}</p>
@@ -178,7 +248,7 @@ export function RegistryManager() {
                     </motion.div>
                   )
                 })}
-                <motion.div variants={fade} onClick={() => setShowNewModal(true)}
+                <motion.div variants={fade} onClick={() => { resetForm(); setShowNewModal(true) }}
                   className="p-5 bg-forge-surface border border-dashed border-forge-border rounded-2xl hover:border-forge-amber/40 hover:bg-forge-amber/5 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 text-forge-subtle hover:text-forge-amber min-h-40">
                   <Plus size={20} />
                   <span className="text-xs font-medium">New Domain Profile</span>
@@ -203,10 +273,16 @@ export function RegistryManager() {
                           </div>
                           <p className="text-xs text-forge-subtle">{tp.description} · {tools.length} tools</p>
                         </div>
-                        <button onClick={() => openEdit({ kind: 'pack', item: tp })}
-                          className="p-1.5 text-forge-subtle hover:text-forge-primary rounded-lg hover:bg-forge-elevated transition-colors opacity-0 group-hover:opacity-100">
-                          <Edit2 size={13} />
-                        </button>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
+                          <button onClick={() => openEdit({ kind: 'pack', item: tp })}
+                            className="p-1.5 text-forge-subtle hover:text-forge-primary rounded-lg hover:bg-forge-elevated transition-colors">
+                            <Edit2 size={13} />
+                          </button>
+                          <button onClick={() => deleteItem('pack', tp.id)}
+                            className="p-1.5 text-forge-subtle hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors">
+                            <X size={13} />
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {tools.map(t => (
@@ -215,7 +291,7 @@ export function RegistryManager() {
                               <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.sensitivity === 'critical' ? 'bg-red-500' : t.sensitivity === 'high' ? 'bg-amber-400' : 'bg-forge-subtle'}`} />
                               <code className="text-[11px] font-mono text-amber-500 truncate">{t.name}</code>
                             </div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide shrink-0 ${SENS_STYLE[t.sensitivity] ?? SENS_STYLE['low']}`}>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wide shrink-0 ${SENS_STYLE[t.sensitivity] || SENS_STYLE['low']}`}>
                               {t.sensitivity}
                             </span>
                           </div>
@@ -224,7 +300,7 @@ export function RegistryManager() {
                     </motion.div>
                   )
                 })}
-                <motion.div variants={fade} onClick={() => setShowNewModal(true)}
+                <motion.div variants={fade} onClick={() => { resetForm(); setShowNewModal(true) }}
                   className="p-5 bg-forge-surface border border-dashed border-forge-border rounded-2xl hover:border-forge-amber/40 hover:bg-forge-amber/5 transition-all cursor-pointer flex items-center justify-center gap-2 text-forge-subtle hover:text-forge-amber py-8">
                   <Plus size={16} />
                   <span className="text-xs font-medium">New Tool Pack</span>
@@ -252,13 +328,19 @@ export function RegistryManager() {
                         <div key={i} className={`w-6 h-2 rounded-full transition-colors ${i <= (p.strictness ?? 0) ? 'bg-amber-400' : 'bg-forge-elevated'}`} />
                       ))}
                     </div>
-                    <button onClick={() => openEdit({ kind: 'policy', item: p })}
-                      className="p-1.5 text-forge-subtle hover:text-forge-primary rounded-lg hover:bg-forge-elevated transition-colors opacity-0 group-hover:opacity-100 shrink-0">
-                      <Edit2 size={13} />
-                    </button>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 shrink-0">
+                      <button onClick={() => openEdit({ kind: 'policy', item: p })}
+                        className="p-1.5 text-forge-subtle hover:text-forge-primary rounded-lg hover:bg-forge-elevated transition-colors">
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => deleteItem('policy', p.id)}
+                        className="p-1.5 text-forge-subtle hover:text-red-500 rounded-lg hover:bg-red-500/10 transition-colors">
+                        <X size={13} />
+                      </button>
+                    </div>
                   </motion.div>
                 ))}
-                <motion.div variants={fade} onClick={() => setShowNewModal(true)}
+                <motion.div variants={fade} onClick={() => { resetForm(); setShowNewModal(true) }}
                   className="p-5 bg-forge-surface border border-dashed border-forge-border rounded-2xl hover:border-forge-amber/40 hover:bg-forge-amber/5 transition-all cursor-pointer flex items-center justify-center gap-2 text-forge-subtle hover:text-forge-amber py-8">
                   <Plus size={16} />
                   <span className="text-xs font-medium">New Policy Preset</span>
@@ -317,27 +399,64 @@ export function RegistryManager() {
                 <X size={16} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide">Name</label>
-                <input className="forge-input" placeholder="Enter name..." />
+                <input className="forge-input" placeholder="Enter name..." value={editName} onChange={e => setEditName(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide">Description</label>
-                <textarea className="forge-input resize-none" rows={3} placeholder="Enter description..." />
+                <textarea className="forge-input resize-none" rows={3} placeholder="Enter description..." value={editDesc} onChange={e => setEditDesc(e.target.value)} />
               </div>
+
+              {tab === 0 && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide">Domain Key</label>
+                  <input className="forge-input" placeholder="e.g. biotech" value={editKey} onChange={e => setEditKey(e.target.value)} />
+                </div>
+              )}
+
+              {tab === 1 && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide">Domain Profile</label>
+                  <select className="forge-input" value={editDomain} onChange={e => setEditDomain(e.target.value)}>
+                    {domains.map(d => <option key={d.key} value={d.key}>{d.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {tab === 2 && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide">Level</label>
+                    <select className="forge-input" value={editLevel} onChange={e => setEditLevel(e.target.value)}>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="strict">Strict</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-forge-secondary uppercase tracking-wide">Strictness (1-5)</label>
+                    <input type="number" min="1" max="5" className="forge-input" value={editStrictness} onChange={e => setEditStrictness(parseInt(e.target.value))} />
+                  </div>
+                </>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowNewModal(false)} className="flex-1 px-4 py-2 text-sm text-forge-secondary hover:text-forge-primary border border-forge-border rounded-xl hover:bg-forge-elevated transition-all">
                   Cancel
                 </button>
-                <button onClick={() => setShowNewModal(false)} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amber-400 text-black text-sm font-bold rounded-xl hover:bg-amber-300 transition-all">
-                  <Plus size={13} /> Create
+                <button onClick={createNew} disabled={saving || !editName}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amber-400 text-black text-sm font-bold rounded-xl hover:bg-amber-300 transition-all disabled:opacity-50">
+                  {saving ? <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Plus size={13} />}
+                  Create
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   )
 }

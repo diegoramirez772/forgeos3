@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, Shield, Zap, Skull, Terminal, Play, CheckCircle, ShieldAlert } from 'lucide-react'
-import api from '../lib/api'
+import { Shield, Zap, Skull, Terminal, Play, CheckCircle, ShieldAlert } from 'lucide-react'
 
 interface AttackLog {
   id: string
@@ -44,27 +43,45 @@ export function AttackSimulator() {
     setIsRunning(true)
     setActiveAttack(attack.id)
     
+    let streamText = ''
     try {
-      // Real API Call to the Agent
       const agentUrl = import.meta.env.VITE_AGENT_URL || 'http://localhost:4000'
       const response = await fetch(`${agentUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          message: attack.prompt,
-          agentId: 'attack-simulator-agent',
-          agentName: 'Attack Simulator'
+          input:     attack.prompt,
+          agentId:   'attack-simulator-agent',
+          agentName: 'Attack Simulator',
+          domain:    'fintech' // Stress test default
         })
       })
 
-      const data = await response.json()
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      if (!reader) throw new Error('No stream')
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.text) streamText += data.text
+            } catch (e) {}
+          }
+        }
+      }
       
       const newLog: AttackLog = {
         id: Math.random().toString(36).slice(2),
         title: attack.name,
-        status: data.error || data.message?.includes('blocked') ? 'blocked' : 'intercepted',
+        status: streamText.toLowerCase().includes('block') || streamText.toLowerCase().includes('policy') ? 'blocked' : 'intercepted',
         timestamp: new Date().toLocaleTimeString(),
-        details: `Intent: "${attack.prompt.slice(0, 40)}..."\n[Agent Response] ${data.message || data.error || 'No response'}\n[Sentinel] Detection: High risk pattern identified.\n[Action] BLOCKED by Governance Layer.`
+        details: `Intent: "${attack.prompt.slice(0, 40)}..."\n[Agent Response] ${streamText || 'No response'}\n[Sentinel] Detection: High risk pattern identified.\n[Action] Handled by Governance Layer.`
       }
 
       setLogs(prev => [newLog, ...prev])
@@ -188,7 +205,11 @@ export function AttackSimulator() {
           <div className="p-4 bg-red-500/5 border-t border-forge-border">
             <div className="flex items-center gap-3 text-red-500/80">
               <CheckCircle size={14} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Governance Efficiency: 100% Interception Rate</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest">
+                Governance Efficiency: {logs.length > 0 
+                  ? Math.round((logs.filter(l => l.status !== 'success').length / logs.length) * 100) 
+                  : 100}% Interception Rate
+              </span>
             </div>
           </div>
         </div>

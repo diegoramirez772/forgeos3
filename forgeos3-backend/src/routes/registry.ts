@@ -57,3 +57,68 @@ registryRouter.get('/templates', async (req, res) => {
   if (error) return res.status(500).json({ error: 'Failed to fetch templates' })
   res.json(data)
 })
+
+// --- DOMAIN PROFILES ---
+registryRouter.post('/domain-profiles', async (req, res) => {
+  const { data, error } = await supabase.from('domain_profiles').insert(req.body).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(201).json(data)
+})
+
+registryRouter.patch('/domain-profiles/:id', async (req, res) => {
+  const { data, error } = await supabase.from('domain_profiles').update(req.body).eq('id', req.params.id).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
+registryRouter.delete('/domain-profiles/:id', async (req, res) => {
+  const { error } = await supabase.from('domain_profiles').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(204).send()
+})
+
+// --- TOOL PACKS ---
+registryRouter.post('/tool-packs', async (req, res) => {
+  const { tools, ...rest } = req.body
+  const { data: pack, error: packErr } = await supabase.from('tool_packs').insert(rest).select().single()
+  if (packErr) return res.status(500).json({ error: packErr.message })
+
+  if (tools && tools.length > 0) {
+    const items = tools.map((t: any) => ({ ...t, tool_pack_id: pack.id }))
+    const { error: itemsErr } = await supabase.from('tool_pack_items').insert(items)
+    if (itemsErr) return res.status(500).json({ error: itemsErr.message })
+  }
+  
+  res.status(201).json(pack)
+})
+
+registryRouter.patch('/tool-packs/:id', async (req, res) => {
+  const { data, error } = await supabase.from('tool_packs').update(req.body).eq('id', req.params.id).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
+registryRouter.delete('/tool-packs/:id', async (req, res) => {
+  const { error } = await supabase.from('tool_packs').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(204).send()
+})
+
+// --- POLICY PRESETS ---
+registryRouter.post('/policy-presets', async (req, res) => {
+  const { data, error } = await supabase.from('policy_presets').insert(req.body).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(201).json(data)
+})
+
+registryRouter.patch('/policy-presets/:id', async (req, res) => {
+  const { data, error } = await supabase.from('policy_presets').update(req.body).eq('id', req.params.id).select().single()
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})
+
+registryRouter.delete('/policy-presets/:id', async (req, res) => {
+  const { error } = await supabase.from('policy_presets').delete().eq('id', req.params.id)
+  if (error) return res.status(500).json({ error: error.message })
+  res.status(204).send()
+})

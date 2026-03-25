@@ -12,6 +12,7 @@ interface ExecuteOptions {
   input:      string
   onToken:    (text: string) => void
   onGovEvent: (event: any)   => void
+  mode?:      string
 }
 
 // ── TAREA 6: Personalidad adaptativa por dominio ─────────────────────────────
@@ -59,8 +60,8 @@ export class AgentExecutor {
     const memory: { tool: string; result: any }[] = []
 
     // ── TAREA 1: Chain of Thought — plan interno antes de actuar ─────────────
-    const personality = DOMAIN_PERSONALITY[domain] || DOMAIN_PERSONALITY.healthtech
-    const systemPrompt = `${personality.system}
+    const personality = DOMAIN_PERSONALITY[domain] || DOMAIN_PERSONALITY.agrotech
+    let systemPrompt = `${personality.system}
 
 IMPORTANT RULES:
 1. Before calling ANY tool, write a brief internal plan: "My plan: 1)... 2)... 3)..."
@@ -68,6 +69,16 @@ IMPORTANT RULES:
 3. Use previous tool results stored in memory to avoid redundant calls.
 4. If blocked by policy, immediately explain why and suggest a safe alternative.
 5. Never loop the same tool more than twice in a row.`
+
+    if (options.mode === 'sentinel') {
+      systemPrompt += `\n\nSENTINEL MODE: 
+Your FINAL response MUST be a structured JSON object (NOT in markdown blocks, just raw JSON text) with these keys: 
+- "summary": A concise overview of the analysis.
+- "findings": An array of key strings discovered.
+- "riskLevel": One of "Bajo", "Medio", "Alto".
+- "recommendation": A clear action for the farmer.
+Example: {"summary": "Alert found...", "findings": ["Evidence of larvae"], "riskLevel": "Alto", "recommendation": "Treat immediately"}`
+    }
 
     // ── TAREA 7: Validación de entradas con Zod ──────────────────────────────
     // (aplicada en registry.ts en cada handler)
@@ -153,7 +164,7 @@ IMPORTANT RULES:
             continue
           }
 
-          const decision = await beforeToolCall(runId!, tc.name, domain, tc.input)
+          const { decision, toolEventId } = await beforeToolCall(runId!, tc.name, domain, tc.input)
           onGovEvent({ toolName: tc.name, decision, reason: "Evaluated by ForgeOS3" })
 
           let toolOutput: any = null
@@ -161,7 +172,7 @@ IMPORTANT RULES:
           if (decision === "allowed") {
             // ── TAREA 5: Manejo de errores pro ──────────────────────────────
             toolOutput = await this.runToolSafe(tc.name, tc.input, domain, onToken)
-            await afterToolCall(runId!, tc.name, { status: "success", result: toolOutput }, Date.now() - start)
+            await afterToolCall(toolEventId, tc.name, { status: "success", result: toolOutput }, Date.now() - start)
 
             // ── TAREA 8: Guardar en memoria de contexto ───────────────────
             memory.push({ tool: tc.name, result: toolOutput })
@@ -179,7 +190,7 @@ IMPORTANT RULES:
             if (approved) {
               onToken(`\n✅ Approved by operator. Executing "${tc.name}"...\n`)
               toolOutput = await this.runToolSafe(tc.name, tc.input, domain, onToken)
-              await afterToolCall(runId!, tc.name, { status: "approved_and_executed", result: toolOutput }, Date.now() - start)
+              await afterToolCall(toolEventId, tc.name, { status: "approved_and_executed", result: toolOutput }, Date.now() - start)
               memory.push({ tool: tc.name, result: toolOutput })
             } else {
               onToken(`\n❌ Rejected by operator.\n`)
@@ -187,17 +198,16 @@ IMPORTANT RULES:
               const alternative = getSafeAlternative(tc.name, domain)
               onToken(`🔄 Sentinel suggestion: ${alternative}\n`)
               toolOutput = { error: "Rejected by operator", sentinel_alternative: alternative }
-              await afterToolCall(runId!, tc.name, { status: "rejected", result: toolOutput }, Date.now() - start)
+              await afterToolCall(toolEventId, tc.name, { status: "rejected", result: toolOutput }, Date.now() - start)
             }
 
           } else {
             // blocked
             onToken(`\n🚫 "${tc.name}" blocked by policy engine.\n`)
-            // ── TAREA 10: Auto-corrección por Sentinel ────────────────────
             const alternative = getSafeAlternative(tc.name, domain)
             onToken(`🔄 Sentinel suggestion: ${alternative}\n`)
             toolOutput = { error: "Blocked by policy", sentinel_alternative: alternative }
-            await afterToolCall(runId!, tc.name, { status: "blocked", result: toolOutput }, Date.now() - start)
+            await afterToolCall(toolEventId, tc.name, { status: "blocked", result: toolOutput }, Date.now() - start)
           }
 
           toolResults.push({

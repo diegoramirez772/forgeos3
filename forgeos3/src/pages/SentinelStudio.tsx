@@ -50,6 +50,7 @@ export function SentinelStudio() {
   const [runState, setRunState] = useState<RunningState>('idle')
   const [runError, setRunError] = useState<string | null>(null)
   const [showRunPanel, setShowRunPanel] = useState(false)
+  const { pushAlert } = useRunStore()
   const abortRef = useRef<AbortController | null>(null)
   const outputRef = useRef<HTMLDivElement>(null)
 
@@ -116,7 +117,12 @@ export function SentinelStudio() {
             try {
               const payload = JSON.parse(dataLine)
               if (eventType === 'token')     setStreamOutput(prev => prev + payload.text)
-              if (eventType === 'gov_event') setGovEvents(prev => [...prev, payload])
+              if (eventType === 'gov_event') {
+                setGovEvents(prev => [...prev, payload])
+                if (payload.decision === 'blocked') {
+                  pushAlert(payload.toolName, payload.reason)
+                }
+              }
               if (eventType === 'done')      setRunState('done')
               if (eventType === 'error') {
                 setRunError(payload.message)
@@ -489,6 +495,8 @@ export function SentinelStudio() {
           </div>
         )}
       </div>
+
+
     </div>
   )
 }

@@ -3,6 +3,12 @@ import type { Run } from '../types/run'
 import type { ApprovalRequest } from '../types/approval'
 import api from '../lib/api'
 
+export interface EmergencyAlert {
+  id: number
+  toolName: string
+  reason: string
+}
+
 interface RunState {
   runs: Run[]
   selectedRun: Run | null
@@ -10,12 +16,17 @@ interface RunState {
   loading: boolean
   loadingApprovals: boolean
   error: string | null
+  emergencyAlerts: EmergencyAlert[]
   fetchRuns: () => Promise<void>
   fetchApprovals: () => Promise<void>
   setSelectedRun: (run: Run | null) => void
   resolveApproval: (id: string, decision: 'approved' | 'rejected') => void
   clearError: () => void
+  pushAlert: (toolName: string, reason: string) => void
+  dismissAlert: (id: number) => void
 }
+
+let _alertIdCounter = 0
 
 export const useRunStore = create<RunState>((set, get) => ({
   runs: [],
@@ -24,12 +35,38 @@ export const useRunStore = create<RunState>((set, get) => ({
   loading: false,
   loadingApprovals: false,
   error: null,
+  emergencyAlerts: [],
 
   fetchRuns: async () => {
     set({ loading: true, error: null })
     try {
-      const { data } = await api.get<{ data: Run[] }>('/api/runs')
-      const runs = data.data
+      const { data } = await api.get<{ data: any[] }>('/api/runs')
+      const rawRuns = data.data
+      const runs: Run[] = rawRuns.map(r => ({
+        id: r.id,
+        agentId: r.agent_id,
+        agentName: r.agent_name,
+        domain: r.domain,
+        status: r.status,
+        input: r.input,
+        output: r.output,
+        loopRiskScore: r.loop_risk_score,
+        startedAt: r.started_at,
+        finishedAt: r.finished_at,
+        toolEvents: (r.tool_events || []).map((e: any) => ({
+          id: e.id,
+          runId: e.run_id,
+          toolName: e.tool_name,
+          decision: e.decision,
+          input: e.input,
+          output: e.output,
+          riskScore: e.risk_score,
+          timestamp: e.timestamp,
+          durationMs: e.duration_ms,
+          reason: e.reason,
+        })),
+      }))
+
       const current = get().selectedRun
       set({
         runs,
@@ -64,4 +101,13 @@ export const useRunStore = create<RunState>((set, get) => ({
   })),
 
   clearError: () => set({ error: null }),
+
+  pushAlert: (toolName, reason) => {
+    const id = ++_alertIdCounter
+    set(s => ({ emergencyAlerts: [...s.emergencyAlerts, { id, toolName, reason }] }))
+    setTimeout(() => get().dismissAlert(id), 6000)
+  },
+
+  dismissAlert: (id) =>
+    set(s => ({ emergencyAlerts: s.emergencyAlerts.filter(a => a.id !== id) })),
 }))

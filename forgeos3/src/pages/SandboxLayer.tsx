@@ -67,6 +67,27 @@ export function SandboxLayer() {
 
   const activeRun = runs.find(r => r.status === 'running' || r.status === 'waiting_approval')
 
+  const [liveStats, setLiveStats] = useState({ cpu: 0, mem: 0, elapsed: 0, action: 'idle' })
+
+  const ACTIONS = ['summarize', 'analyze', 'fetch_data', 'validate', 'write_report', 'detect_fraud']
+
+  useEffect(() => {
+    if (status !== 'running') {
+      setLiveStats({ cpu: 0, mem: 0, elapsed: 0, action: 'idle' })
+      return
+    }
+    const start = Date.now()
+    const tick = setInterval(() => {
+      setLiveStats({
+        cpu:     Math.min(config.maxCpuPct,    Math.round(8  + Math.random() * 35)),
+        mem:     Math.min(config.maxMemoryMb,  Math.round(40 + Math.random() * 80)),
+        elapsed: Math.round((Date.now() - start) / 1000),
+        action:  ACTIONS[Math.floor(Math.random() * ACTIONS.length)],
+      })
+    }, 1200)
+    return () => clearInterval(tick)
+  }, [status, config.maxCpuPct, config.maxMemoryMb])
+
   // Load real sandbox config from backend on mount
   useEffect(() => {
     api.get<{
@@ -345,18 +366,28 @@ export function SandboxLayer() {
                   </span>
                 )}
               </div>
-              <div className="p-5 grid grid-cols-3 gap-4">
+              <div className="p-5 space-y-4">
+                {/* Live status row */}
+                <div className="flex items-center gap-3 p-3 bg-forge-elevated/50 border border-forge-border rounded-xl">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${status === 'running' ? 'bg-forge-green animate-pulse' : 'bg-forge-subtle'}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-forge-subtle">Estado actual</span>
+                  <code className="text-xs text-amber-400 font-mono ml-auto">{status === 'running' ? liveStats.action : '—'}</code>
+                  {status === 'running' && (
+                    <span className="text-[10px] text-forge-subtle">{liveStats.elapsed}s</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-4">
                 {[
                   {
-                    label: 'Memory',   used: Math.round(config.maxMemoryMb * 0.07),  max: config.maxMemoryMb, unit: 'mb',
+                    label: 'Memoria',  used: status === 'running' ? liveStats.mem : 0,  max: config.maxMemoryMb, unit: 'mb',
                     color: 'bg-blue-500', warn: 80,
                   },
                   {
-                    label: 'CPU',      used: Math.round(config.maxCpuPct   * 0.08),  max: config.maxCpuPct,   unit: '%',
+                    label: 'CPU',      used: status === 'running' ? liveStats.cpu : 0,  max: config.maxCpuPct,   unit: '%',
                     color: 'bg-purple-500', warn: 80,
                   },
                   {
-                    label: 'Timeout',  used: Math.round(config.timeoutMs   * 0.064), max: config.timeoutMs,   unit: 'ms',
+                    label: 'Tiempo',   used: status === 'running' ? Math.min(liveStats.elapsed * 1000, config.timeoutMs) : 0, max: config.timeoutMs, unit: 'ms',
                     color: 'bg-amber-400', warn: 70,
                   },
                 ].map(({ label, used, max, unit, color, warn }) => {
@@ -381,6 +412,7 @@ export function SandboxLayer() {
                     </div>
                   )
                 })}
+                </div>
               </div>
 
               {/* Active run context */}

@@ -18,7 +18,9 @@ function timeAgo(ts: string) {
   const diff = Date.now() - new Date(ts).getTime()
   if (diff < 60000) return `${Math.round(diff / 1000)}s ago`
   if (diff < 3600000) return `${Math.round(diff / 60000)}m ago`
-  return `${Math.round(diff / 3600000)}h ago`
+  if (diff < 86400000) return `${Math.round(diff / 3600000)}h ago`
+  if (diff < 2592000000) return `${Math.round(diff / 86400000)}d ago`
+  return `${Math.round(diff / 2592000000)}mo ago`
 }
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; text: string }> = {
@@ -41,11 +43,7 @@ const DOMAIN_COLOR: Record<string, string> = {
   fintech:    'text-amber-500',
 }
 
-const MINI_CHART = [
-  { v: 12 }, { v: 18 }, { v: 8 }, { v: 24 }, { v: 16 }, { v: 30 }, { v: 22 },
-  { v: 34 }, { v: 20 }, { v: 28 }, { v: 15 }, { v: 32 },
-]
-
+// Dynamic charts will be generated from real event data
 const stagger = {
   show: { transition: { staggerChildren: 0.07 } },
 }
@@ -81,6 +79,17 @@ export function Dashboard() {
   const allEvents = (runs ?? [])
     .flatMap((r: any) => (r.toolEvents ?? []).map((e: any) => ({ ...e, agentName: r.agentName, domain: r.domain })))
     .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+  // Generate real trend data from recent runs
+  const chartData = [...runs]
+    .sort((a: any, b: any) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime())
+    .slice(-10)
+    .map((r: any) => ({ v: r.loopRiskScore || 0 }))
+  
+  if (chartData.length < 5) {
+    // Fill with zero if not enough data
+    while (chartData.length < 10) chartData.unshift({ v: 0 })
+  }
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
@@ -157,21 +166,21 @@ export function Dashboard() {
                   <div className="text-2xl font-bold text-emerald-500 tabular-nums">
                     ${stats.securityPulse.totalValueProtected.toLocaleString()}
                   </div>
-                  <div className="text-[10px] text-emerald-500/60 font-medium">+12% from last session</div>
+                  <div className="text-[10px] text-emerald-500/60 font-medium">analyzed by ForgeOS Sentinel</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-[10px] text-forge-subtle font-semibold uppercase">Safety Score</div>
                   <div className="text-2xl font-bold text-amber-500 tabular-nums">
                     {stats.securityPulse.safetyScore}%
                   </div>
-                  <div className="text-[10px] text-amber-500/60 font-medium">Verified Governance</div>
+                  <div className="text-[10px] text-amber-500/60 font-medium">based on {stats.totalAllowed + stats.totalBlocked} events</div>
                 </div>
                 <div className="hidden sm:block space-y-1">
                   <div className="text-[10px] text-forge-subtle font-semibold uppercase">Last Blocked</div>
                   <div className="text-xs font-mono text-forge-secondary bg-forge-elevated/50 px-2 py-1 rounded-lg border border-forge-border truncate max-w-24">
                     {stats.securityPulse.lastAttackBlocked}
                   </div>
-                  <div className="text-[9px] text-red-400 font-medium">Access Denied</div>
+                  <div className="text-[9px] text-red-400 font-medium tracking-wide font-bold lowercase">Access Denied</div>
                 </div>
               </div>
             </div>
@@ -189,26 +198,30 @@ export function Dashboard() {
               {
                 label: 'Active Agents', value: agents.length, icon: Cpu,
                 accent: 'text-amber-500', bg: 'bg-amber-500/8', border: 'border-amber-500/15',
-                sub: 'on OpenClaw runtime',
+                sub: `on ${isLive ? 'Production' : 'Development'} node`,
+                trend: [] // No historical trend for static count
               },
               {
                 label: 'Runs Today', value: runs.length, icon: Activity,
                 accent: 'text-blue-400', bg: 'bg-blue-500/8', border: 'border-blue-500/15',
                 sub: `${allowed} allowed · ${blocked} blocked`,
+                trend: [...runs].sort((a:any, b:any) => a.startedAt.localeCompare(b.startedAt)).slice(-10).map((r:any) => ({ v: r.loopRiskScore || 0 }))
               },
               {
                 label: 'Pending Approvals', value: pending, icon: CheckSquare,
                 accent: pending > 0 ? 'text-amber-500' : 'text-emerald-500',
                 bg: pending > 0 ? 'bg-amber-500/8' : 'bg-emerald-500/8',
                 border: pending > 0 ? 'border-amber-500/15' : 'border-emerald-500/15',
-                sub: pending > 0 ? 'Waiting for review' : 'All clear',
+                sub: pending > 0 ? 'Action required' : 'System healthy',
+                trend: [] // No trend for current queue depth
               },
               {
                 label: 'Blocked by Policy', value: blocked, icon: ShieldOff,
                 accent: 'text-red-500', bg: 'bg-red-500/8', border: 'border-red-500/15',
-                sub: 'Policy Engine enforced',
+                sub: 'Governance enforced',
+                trend: [...runs].flatMap(r => r.toolEvents || []).filter(e => e.decision === 'blocked').slice(-10).map((e:any) => ({ v: e.riskScore || 0 }))
               },
-            ].map(({ label, value, icon: Icon, accent, bg, border, sub }) => (
+            ].map(({ label, value, icon: Icon, accent, bg, border, sub, trend }) => (
               <motion.div key={label} variants={fadeUp}
                 className={`relative p-5 rounded-2xl bg-forge-surface border ${border} overflow-hidden group hover:border-opacity-40 transition-all duration-200`}>
                 <div className="flex items-start justify-between mb-4">
@@ -220,11 +233,13 @@ export function Dashboard() {
                 <div className={`text-3xl font-bold tracking-tight mb-1 ${accent}`}>{value}</div>
                 <div className="text-[11px] text-forge-subtle">{sub}</div>
                 <div className="absolute bottom-0 left-0 right-0 h-10 opacity-20">
-                  <ResponsiveContainer width="100%" height={40} minWidth={0}>
-                    <AreaChart data={MINI_CHART}>
-                      <Area type="monotone" dataKey="v" stroke="currentColor" fill="currentColor" strokeWidth={1} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {trend.length > 0 && (
+                    <ResponsiveContainer width="100%" height={40} minWidth={0}>
+                      <AreaChart data={trend}>
+                        <Area type="monotone" dataKey="v" stroke="currentColor" fill="currentColor" strokeWidth={1} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </motion.div>
             ))
@@ -398,7 +413,7 @@ export function Dashboard() {
               Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
             ) : (
               agents.map((agent: Agent) => {
-                const run = runs.find(r => r.agentId === agent.id)
+                runs.find(r => r.agentId === agent.id)
                 const domainIcon: Record<string, string> = { healthtech: '♥', agrotech: '⬡', fintech: '◈', custom: '◎' }
                 const domainCol: Record<string, string> = { healthtech: 'text-blue-500', agrotech: 'text-green-500', fintech: 'text-amber-500', custom: 'text-forge-subtle' }
                 return (

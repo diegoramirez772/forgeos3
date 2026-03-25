@@ -17,8 +17,8 @@ dashboardRouter.get('/stats', async (_req, res) => {
       // Total runs + by status
       supabase.from('agent_runs').select('status, loop_risk_score, domain'),
 
-      // Tool events decisions
-      supabase.from('tool_events').select('decision, risk_score, tool_name'),
+      // Tool events decisions with domain join
+      supabase.from('tool_events').select('decision, risk_score, tool_name, input, run_id, agent_runs(domain)'),
 
       // Approvals by status
       supabase.from('approval_requests').select('status, domain, created_at'),
@@ -69,15 +69,15 @@ dashboardRouter.get('/stats', async (_req, res) => {
       return acc
     }, {})
 
-      // Security Pulse (Pro)
+      // Security Pulse (Pro) — Real calculations based on tool_events
       const totalValueProtected = toolEvents
         .filter(e => e.decision === 'blocked')
         .reduce((sum, e) => {
           // If fintech transfer, use the amount from the input payload
           const input = (e as any).input || {}
           if (input.amount) return sum + Number(input.amount)
-          // Default savings for other blocked malicious actions
-          return sum + 250 
+          // No fallback — only count real financial values to ensure 100% authenticity
+          return sum
         }, 0)
 
       res.json({
@@ -102,8 +102,10 @@ dashboardRouter.get('/stats', async (_req, res) => {
         // Security Pulse (Pro)
         securityPulse: {
           totalValueProtected,
-          safetyScore: Math.round((totalAllowed / (totalAllowed + totalBlocked + 1)) * 100),
-          shieldStatus: totalBlocked > 5 ? 'Elite' : 'Active',
+          safetyScore: (totalAllowed + totalBlocked) > 0 
+            ? Math.round((totalAllowed / (totalAllowed + totalBlocked)) * 100)
+            : 100,
+          shieldStatus: totalBlocked > 10 ? 'Elite' : totalBlocked > 0 ? 'Active' : 'Standby',
           lastAttackBlocked: toolEvents.find(e => e.decision === 'blocked')?.tool_name || 'None'
         }
       })

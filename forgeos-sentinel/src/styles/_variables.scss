@@ -1,0 +1,27 @@
+// ── Color Palette ─────────────────────────────────────────────
+$bg-deep:      #060a0e;
+$bg-card:      rgba(255, 255, 255, 0.035);
+$bg-primary:   #0b0f14;
+$bg-secondary: #111827;
+
+$text-primary:   #f8fafc;
+$text-secondary: #94a3b8;
+$text-muted:     #7c8fa3;
+
+$green:          #34d399; // Agrotech Accent
+$blue:           #60a5fa; // Tech Accent
+$amber:          #fbbf24; // Warning Accent
+$red:            #f87171; // Critical Accent
+
+$border:         rgba(255, 255, 255, 0.08);
+$border-accent:  rgba(52, 211, 153, 0.3);
+
+// ── Typography ───────────────────────────────────────────────
+$font-display: 'DM Sans', system-ui, sans-serif;
+$font-mono:    'JetBrains Mono', monospace;
+
+// ── Spacing & Radius ─────────────────────────────────────────
+$r-lg: 32px;
+$r-md: 24px;
+$r-sm: 16px;
+$r-xs: 12px;
