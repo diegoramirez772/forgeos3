@@ -1,83 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { VoiceOrb, OrbState } from './components/VoiceOrb';
 import { SearchBar } from './components/SearchBar';
 import { ResponseCard } from './components/ResponseCard';
 import { callAgent, parseAgentResponse, ParsedResponse } from './services/agent';
+import { useSpeech } from './hooks/useSpeech';
 
 export default function App() {
   const [orbState, setOrbState] = useState<OrbState>('idle');
   const [response, setResponse] = useState<ParsedResponse | null>(null);
-  const [isListening, setIsListening] = useState(false);
+  const [govEventMsg, setGovEventMsg] = useState<string>('');
+  const rawDataRef = useRef('');
 
-  // Web Speech API
-  const startListening = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert("Tu navegador no soporta reconocimiento de voz.");
-      return;
-    }
-    
-    setIsListening(true);
-    setOrbState('listening');
-    
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRec();
-    recognition.lang = 'es-MX';
-    recognition.interimResults = false;
-    
-    recognition.onresult = (event: any) => {
-      const text = event.results[0][0].transcript;
-      handleSearch(text);
-    };
-    
-    recognition.onend = () => {
-      setIsListening(false);
-      // Wait for the status to change during search to not reset to idle wrongly.
-      setOrbState(prev => prev === 'listening' ? 'idle' : prev);
-    };
-    
-    recognition.start();
-  };
-
+  // ── Core search handler ───────────────────────────────────────────────────
   const handleSearch = (query: string) => {
+    if (!query.trim()) return;
     setOrbState('loading');
     setResponse(null);
+    setGovEventMsg('');
+    rawDataRef.current = '';
 
-    // Abre Google si el usuario pide buscar en internet
+    // Open Google tab if user asks
     const wantsGoogle = /busca?(r)?\s*(en\s*)?(google|internet|web|navegador)/i.test(query) || /ve a google/i.test(query);
     if (wantsGoogle) {
-      const searchTerm = query
+      const term = query
         .replace(/busca?(r)?\s*(en\s*)?(google|internet|web|navegador)/gi, '')
         .replace(/ve a google/gi, '')
         .trim();
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(searchTerm || query)}`, '_blank');
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(term || query)}`, '_blank');
     }
 
-    let rawData = "";
-
-    callAgent(
-      query,
-      'agrotech',
-      'Forge Sentinel',
-      'openclaw',
-      {
-        onToken: (text) => {
-          rawData += text;
-        },
-        onGovEvent: (event) => {
-           // We might log this or show in UI, skipping for MVP minimalism
-        },
-        onDone: () => {
-          setResponse(parseAgentResponse(rawData));
-          setOrbState('responding');
-          setTimeout(() => setOrbState('idle'), 3000);
-        },
-        onError: (err) => {
-          console.error(err);
-          setOrbState('idle');
-          alert("Error: " + err);
+    callAgent(query, 'agrotech', 'Forge Sentinel', 'openclaw', {
+      onToken: (text) => { rawDataRef.current += text; },
+      onGovEvent: (event: any) => {
+        setGovEventMsg(`⚙️ Gobernanza: ${event.tool || ''} → ${event.decision || ''}`);
+        setTimeout(() => setGovEventMsg(''), 3500);
+      },
+      onDone: () => {
+        const parsed = parseAgentResponse(rawDataRef.current);
+        setResponse(parsed);
+        setOrbState('responding');
+        // Read summary aloud via TTS
+        if (parsed?.summary) {
+          speech.speak(parsed.summary);
         }
-      }
-    );
+        setTimeout(() => setOrbState('idle'), 4000);
+      },
+      onError: (err) => {
+        console.error('[Agent Error]', err);
+        setOrbState('idle');
+        setGovEventMsg(`❌ Error: ${err}`);
+        setTimeout(() => setGovEventMsg(''), 4000);
+      },
+    });
+  };
+
+  // ── Voice hook ────────────────────────────────────────────────────────────
+  const speech = useSpeech(handleSearch);
+
+  // Sync orb state with speech state
+  useEffect(() => {
+    if (speech.state === 'listening') setOrbState('listening');
+    else if (speech.state === 'processing') setOrbState('loading');
+    // don't reset to idle here — let the agent flow control that
+  }, [speech.state]);
+
+  const toggleVoice = () => {
+    if (speech.state === 'listening') {
+      speech.stopListening();
+    } else {
+      speech.cancelSpeech(); // Stop any TTS before listening
+      speech.startListening();
+    }
   };
 
   return (
@@ -89,16 +82,62 @@ export default function App() {
           Consulta por voz o texto noticias, alertas y reportes sobre el gusano barrenador
         </p>
 
-        <VoiceOrb state={orbState} />
+        {/* Orb — clickable to toggle voice */}
+        <div onClick={toggleVoice} style={{ cursor: 'pointer' }}>
+          <VoiceOrb state={orbState} />
+        </div>
 
-        <SearchBar 
-          onSearch={handleSearch} 
-          onVoiceStart={startListening} 
-          onVoiceEnd={() => setIsListening(false)} 
-          isListening={isListening} 
+        {/* Live transcript while speaking */}
+        {speech.transcript && (
+          <div style={{
+            margin: '0 auto 16px',
+            maxWidth: 520,
+            padding: '10px 18px',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 16,
+            fontSize: 14,
+            color: '#94a3b8',
+            textAlign: 'center',
+            fontStyle: 'italic',
+            letterSpacing: '0.01em',
+          }}>
+            🎤 &ldquo;{speech.transcript}&rdquo;
+          </div>
+        )}
+
+        {/* Governance event toast */}
+        {govEventMsg && (
+          <div style={{
+            margin: '0 auto 12px',
+            maxWidth: 520,
+            padding: '8px 16px',
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.2)',
+            borderRadius: 12,
+            fontSize: 12,
+            color: '#f59e0b',
+            textAlign: 'center',
+          }}>
+            {govEventMsg}
+          </div>
+        )}
+
+        <SearchBar
+          onSearch={handleSearch}
+          onVoiceStart={toggleVoice}
+          onVoiceEnd={speech.stopListening}
+          isListening={speech.state === 'listening'}
         />
 
         <ResponseCard response={response} isLoading={orbState === 'loading'} />
+
+        {/* Voice not supported fallback */}
+        {!speech.supported && (
+          <p style={{ textAlign: 'center', fontSize: 12, color: '#ef4444', marginTop: 8 }}>
+            ⚠️ Tu navegador no soporta reconocimiento de voz. Usa Chrome.
+          </p>
+        )}
       </div>
     </div>
   );
